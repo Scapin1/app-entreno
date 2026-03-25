@@ -1,0 +1,28 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: React (JSX), Static JSON for data
+  Architecture: Vertical Slice, Feature-based
+  Style: Minimizing code duplication (DRY), JS Standard
+  Core Goal: Versatile training app (sets/reps vs time-based)
+
+rules:
+  proposal:
+    - Focus on feature separation (Vertical Slice)
+    - Define data structure for exercises in JSON
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Define clear flows for training selection
+  design:
+    - Component architecture for versatile exercises (sets/reps vs time)
+    - Document data schema for the static JSON
+  tasks:
+    - Group tasks by Feature
+    - Small, verifiable steps
+  apply:
+    - Use JSX, no TypeScript unless requested
+    - Maintain Vertical Slice structure
+  verify:
+    - Manual verification against specs
+    - Functional checks for UI flows
