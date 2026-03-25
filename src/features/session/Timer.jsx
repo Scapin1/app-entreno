@@ -11,6 +11,7 @@ const Timer = ({ seconds, isRunning: initialIsRunning = false, onComplete, autoS
     setTimeLeft(seconds)
     setPrepTimeLeft(PREP_TIME)
     setIsPreparing(withPrep && (autoStart || initialIsRunning))
+    setIsRunning(initialIsRunning || autoStart)
   }, [seconds, autoStart, initialIsRunning, withPrep])
 
   useEffect(() => {
