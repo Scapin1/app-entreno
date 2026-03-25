@@ -135,17 +135,19 @@
     },
     {
       "id": 3,
-      "title": "Día 3: Tren Inferior y Core",
-      "focus": "Fuerza (Piernas y Abdominales)",
-      "implements": ["barra", "mancuernas", "rueda abdominal", "elíptica"],
+      "title": "Día 3: Fuerza",
+      "focus": "Fuerza (Tren Inferior y Empuje)",
+      "implements": ["barra", "mancuernas", "banda elástica", "polea", "bicicleta", "discos"],
       "blocks": [
         {
           "name": "Calentamiento",
           "exercises": [
-            { "name": "Mov. articular general", "type": "manual" },
-            { "name": "Puentes de cadera", "type": "reps", "value": 20 },
-            { "name": "Sentadillas profundas", "type": "reps", "value": 15 },
-            { "name": "Plancha frontal", "type": "timer", "value": 60 }
+            { "name": "Mov. articular (énfasis cadera y hombro; 90-90 y rotaciones de hombro)", "type": "manual" },
+            { "name": "Respiraciones diafragmáticas en postura de puente de cadera", "type": "reps", "value": 10 },
+            { "name": "Sentadillas profundas", "type": "reps", "value": 20 },
+            { "name": "Dominadas con apoyo de banda", "type": "reps", "value": 10 },
+            { "name": "Push up con apoyo separado", "type": "reps", "value": 20 },
+            { "name": "Vuelos posteriores con discos pequeños", "type": "reps", "value": 15 }
           ]
         },
         {
@@ -153,81 +155,96 @@
           "config": { "micro_pause": 60, "macro_pause": 120 },
           "exercises": [
             { 
-              "name": "Hip Thrust con barra", 
+              "name": "Sentadilla c/barra frontal", 
               "type": "sets", 
-              "sets": 4, 
+              "sets": 5, 
               "reps": 10, 
-              "note": "rir 3" 
-            },
-            { 
-              "name": "Estocadas con mancuerna", 
-              "type": "sets", 
-              "sets": 4, 
-              "reps": 12, 
-              "alternating": true,
               "note": "rir 4" 
             },
             { 
-              "name": "Peso muerto rumano con mancuernas", 
+              "name": "Remo con barra", 
               "type": "sets", 
               "sets": 4, 
-              "reps": 8, 
-              "note": "rir 3" 
+              "reps": 12, 
+              "note": "rir 3-4" 
             },
             { 
-              "name": "Plancha lateral", 
-              "type": "sets", 
-              "sets": 4, 
-              "alternating": true,
-              "value": "30 segundos por lado" 
-            },
-            { 
-              "name": "Bicho muerto (Deadbug)", 
+              "name": "Press francés c/mancuernas", 
               "type": "sets", 
               "sets": 3, 
-              "reps": 15 
+              "reps": 15, 
+              "note": "carga media-baja" 
+            },
+            { 
+              "name": "Press militar c/ mancuernas", 
+              "type": "sets", 
+              "sets": 3, 
+              "reps": 12, 
+              "note": "rir 2" 
+            },
+            { 
+              "name": "Chest press en máquina de polea", 
+              "type": "sets", 
+              "sets": 3, 
+              "reps": 16, 
+              "note": "carga media" 
             }
           ]
         },
         {
           "name": "Vuelta a la calma",
           "exercises": [
-            { "name": "Elíptica", "type": "timer", "value": 300 },
-            { "name": "Estiramientos generales", "type": "manual" }
+            { "name": "Bicicleta", "type": "timer", "value": 300 },
+            { "name": "Flexibilidad general", "type": "manual" }
           ]
         }
       ]
     },
     {
       "id": 4,
-      "title": "Día 4: Full Body Circuit",
-      "focus": "Funcional de Alta Intensidad",
-      "implements": ["mancuernas", "banda elástica", "salto de cuerda"],
+      "title": "Día 4: Resistencia",
+      "focus": "Resistencia Cardiopulmonar",
+      "implements": ["salto de cuerda", "bicicleta", "elíptica"],
       "blocks": [
         {
           "name": "Calentamiento",
           "exercises": [
             { "name": "Mov. articular general", "type": "manual" },
-            { "name": "Trote ligero / Salto de cuerda", "type": "timer", "value": 300 }
+            { "name": "Salto de cuerda", "type": "timer", "value": 180 },
+            { "name": "Bicicleta (de pie)", "type": "timer", "value": 180 },
+            { "name": "Crunch abd. cortos", "type": "reps", "value": 30 },
+            { "name": "Plancha", "type": "timer", "value": 60 }
           ]
         },
         {
-          "name": "Fase Principal",
-          "config": { "work": 40, "micro_pause": 20, "macro_pause": 120, "total_sets": 3 },
+          "name": "Fase Principal (Circuito)",
+          "config": { "work": 50, "micro_pause": 25, "macro_pause": 60, "total_sets": 4 },
           "type": "circuit",
           "exercises": [
-            { "name": "Jumping Jacks", "type": "timer", "value": 40 },
-            { "name": "Escaladores (Mountain Climbers)", "type": "timer", "value": 40 },
-            { "name": "Press Militar con mancuerna", "type": "timer", "value": 40 },
-            { "name": "Sentadillas con salto (Jump Squats)", "type": "timer", "value": 40 },
-            { "name": "Remo con banda elástica", "type": "timer", "value": 40 },
-            { "name": "Plancha dinámica (Plank taps)", "type": "timer", "value": 40 }
+            { "name": "Jumping Jacks", "type": "timer", "value": 50 },
+            { "name": "Escaladores", "type": "timer", "value": 50 },
+            { "name": "Tuck up", "type": "timer", "value": 50 },
+            { "name": "Burpees (sin flexión de codos)", "type": "timer", "value": 50 },
+            { "name": "Twist rusos", "type": "timer", "value": 50 }
+          ]
+        },
+        {
+          "name": "Fase Principal (Intervalos)",
+          "config": { "micro_pause": 0, "macro_pause": 0 },
+          "exercises": [
+            { 
+              "name": "Bicicleta: 1' sentado (veloc. media) x 30\" de pie (veloc. máx)", 
+              "type": "sets", 
+              "sets": 6, 
+              "value": "1 min sentado + 30 seg de pie" 
+            }
           ]
         },
         {
           "name": "Vuelta a la calma",
           "exercises": [
-            { "name": "Caminata ligera", "type": "timer", "value": 600 }
+            { "name": "Elíptica (intensidad baja)", "type": "timer", "value": 300 },
+            { "name": "Flexibilidad general", "type": "manual" }
           ]
         }
       ]
