@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Dumbbell } from 'lucide-react'
 import MainMenu from './features/menu/MainMenu'
 import TrainingPreview from './features/preview/TrainingPreview'
 import SessionController from './features/session/SessionController'
@@ -34,7 +34,12 @@ function App() {
             <ChevronLeft size={32} />
           </button>
         )}
-        <h1 className="text-4xl font-black text-primary uppercase tracking-tighter italic">Entreno App</h1>
+        <div className="flex items-center gap-2">
+          <div className="bg-primary text-primary-content p-2 rounded-xl rotate-12 shadow-lg">
+            <Dumbbell size={28} strokeWidth={3} />
+          </div>
+          <h1 className="text-4xl font-black text-primary uppercase tracking-tighter italic">Entreno App</h1>
+        </div>
       </header>
 
       <main className="w-full flex-grow">
