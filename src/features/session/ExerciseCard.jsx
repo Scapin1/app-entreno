@@ -103,7 +103,7 @@ const ExerciseCard = ({
                 {isTimerRunning && (
                   <div className="flex flex-col items-center gap-4">
                     <Timer 
-                      key={timerKey}
+                      resetKey={timerKey}
                       seconds={20} 
                       isRunning={isTimerRunning} 
                       onComplete={handleManualTimerComplete}
@@ -129,7 +129,7 @@ const ExerciseCard = ({
         {exercise.type === 'timer' && (
           <div className="flex flex-col items-center gap-6 w-full">
             <Timer 
-              key={timerKey}
+              resetKey={timerKey}
               seconds={exercise.value} 
               isRunning={isTimerRunning} 
               onComplete={handleTimerComplete}

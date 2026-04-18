@@ -55,13 +55,15 @@ const Timer = ({
   isRunning: initialIsRunning = false, 
   onComplete, 
   autoStart = false, 
-  withPrep = false 
+  withPrep = false,
+  resetKey = 0,
 }) => {
   const [isRunning, setIsRunning] = useState(initialIsRunning || autoStart)
   const [isPreparing, setIsPreparing] = useState(withPrep && (autoStart || initialIsRunning))
   const [timeLeft, setTimeLeft] = useState(seconds)
   const [prepTimeLeft, setPrepTimeLeft] = useState(PREP_TIME)
   const [soundPlayed, setSoundPlayed] = useState(false)
+  const [tick, setTick] = useState(0) // Forzar re-render
   
   // Refs para timestamps
   const startTimeRef = useRef(null)
@@ -76,20 +78,21 @@ const Timer = ({
     onCompleteRef.current = onComplete
   }, [onComplete])
 
-  // Resetear cuando cambian los props
+  // Resetear cuando cambian los props o resetKey
   useEffect(() => {
     setTimeLeft(seconds)
     setPrepTimeLeft(PREP_TIME)
     setIsPreparing(withPrep && (autoStart || initialIsRunning))
     setIsRunning(initialIsRunning || autoStart)
     setSoundPlayed(false)
+    setTick(t => t + 1)
     
     // Resetear timestamps
     startTimeRef.current = null
     targetTimeRef.current = null
     prepStartTimeRef.current = null
     prepTargetTimeRef.current = null
-  }, [seconds, autoStart, initialIsRunning, withPrep])
+  }, [seconds, autoStart, initialIsRunning, withPrep, resetKey])
 
   // Loop principal usando requestAnimationFrame + timestamps
   const updateTimer = useCallback(() => {
