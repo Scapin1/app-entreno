@@ -1,41 +1,169 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 
-const Timer = ({ seconds, isRunning: initialIsRunning = false, onComplete, autoStart = false, withPrep = false }) => {
-  const PREP_TIME = 5
+const PREP_TIME = 5
+
+// ==================== SONIDO ====================
+const playSound = () => {
+  try {
+    // Usar Web Audio API para un beep simple
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+    const oscillator = audioContext.createOscillator()
+    const gainNode = audioContext.createGain()
+    
+    oscillator.connect(gainNode)
+    gainNode.connect(audioContext.destination)
+    
+    // Frecuencia aguda (beep)
+    oscillator.frequency.value = 880 // 880Hz - tono agudo
+    oscillator.type = 'sine'
+    
+    // Volumen
+    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+    
+    //Reproducir
+    oscillator.start(audioContext.currentTime)
+    oscillator.stop(audioContext.currentTime + 0.5)
+    
+    //Después de 200ms, otro beep más agudo
+    setTimeout(() => {
+      const osc2 = audioContext.createOscillator()
+      const gain2 = audioContext.createGain()
+      osc2.connect(gain2)
+      gain2.connect(audioContext.destination)
+      osc2.frequency.value = 1100 // Más agudo
+      osc2.type = 'sine'
+      gain2.gain.setValueAtTime(0.5, audioContext.currentTime)
+      gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3)
+      osc2.start(audioContext.currentTime)
+      osc2.stop(audioContext.currentTime + 0.3)
+    }, 200)
+  } catch (e) {
+    console.error('Audio error:', e)
+  }
+}
+
+// ==================== TIMER BASADO EN TIMESTAMPS ====================
+const Timer = ({ 
+  seconds, 
+  isRunning: initialIsRunning = false, 
+  onComplete, 
+  autoStart = false, 
+  withPrep = false 
+}) => {
+  const [isRunning, setIsRunning] = useState(initialIsRunning || autoStart)
+  const [isPreparing, setIsPreparing] = useState(withPrep && (autoStart || initialIsRunning))
   const [timeLeft, setTimeLeft] = useState(seconds)
   const [prepTimeLeft, setPrepTimeLeft] = useState(PREP_TIME)
-  const [isPreparing, setIsPreparing] = useState(withPrep && (autoStart || initialIsRunning))
-  const [isRunning, setIsRunning] = useState(initialIsRunning || autoStart)
+  const [soundPlayed, setSoundPlayed] = useState(false)
+  
+  // Refs para timestamps
+  const startTimeRef = useRef(null)
+  const targetTimeRef = useRef(null)
+  const prepStartTimeRef = useRef(null)
+  const prepTargetTimeRef = useRef(null)
+  const animationFrameRef = useRef(null)
+  const onCompleteRef = useRef(onComplete)
+  
+  // Actualizar ref de onComplete cuando cambia
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
+  // Resetear cuando cambian los props
   useEffect(() => {
     setTimeLeft(seconds)
     setPrepTimeLeft(PREP_TIME)
     setIsPreparing(withPrep && (autoStart || initialIsRunning))
     setIsRunning(initialIsRunning || autoStart)
+    setSoundPlayed(false)
+    
+    // Resetear timestamps
+    startTimeRef.current = null
+    targetTimeRef.current = null
+    prepStartTimeRef.current = null
+    prepTargetTimeRef.current = null
   }, [seconds, autoStart, initialIsRunning, withPrep])
 
-  useEffect(() => {
-    let interval = null
-    if (isRunning) {
-      if (isPreparing) {
-        if (prepTimeLeft > 0) {
-          interval = setInterval(() => {
-            setPrepTimeLeft((prev) => prev - 1)
-          }, 1000)
-        } else {
-          setIsPreparing(false)
+  // Loop principal usando requestAnimationFrame + timestamps
+  const updateTimer = useCallback(() => {
+    const now = Date.now()
+    
+    if (isPreparing && prepStartTimeRef.current !== null) {
+      // Fase de preparación
+      const elapsed = now - prepStartTimeRef.current
+      const remaining = Math.max(0, PREP_TIME - Math.floor(elapsed / 1000))
+      
+      if (remaining !== prepTimeLeft) {
+        setPrepTimeLeft(remaining)
+      }
+      
+      if (remaining <= 0) {
+        // Fin de preparación
+        setIsPreparing(false)
+        prepStartTimeRef.current = null
+        // Iniciar timer principal
+        if (isRunning) {
+          startTimeRef.current = Date.now()
+          targetTimeRef.current = Date.now() + (seconds * 1000)
         }
-      } else if (timeLeft > 0) {
-        interval = setInterval(() => {
-          setTimeLeft((prev) => prev - 1)
-        }, 1000)
-      } else if (timeLeft === 0) {
-        onComplete()
+      }
+    } else if (isRunning && startTimeRef.current !== null) {
+      // Timer principal
+      const elapsed = now - startTimeRef.current
+      const remaining = Math.max(0, seconds - Math.floor(elapsed / 1000))
+      
+      if (remaining !== timeLeft) {
+        setTimeLeft(remaining)
+      }
+      
+      if (remaining <= 0) {
+        // Fin del timer - reproducir sonido
+        if (!soundPlayed) {
+          playSound()
+          setSoundPlayed(true)
+        }
+        
+        // Ejecutar callback
+        if (onCompleteRef.current) {
+          onCompleteRef.current()
+        }
+        return // Stop the loop
       }
     }
-    return () => clearInterval(interval)
-  }, [isRunning, isPreparing, prepTimeLeft, timeLeft, onComplete])
+    
+    // Continuar el loop
+    if (isRunning && (isPreparing || timeLeft > 0)) {
+      animationFrameRef.current = requestAnimationFrame(updateTimer)
+    }
+  }, [isRunning, isPreparing, timeLeft, prepTimeLeft, seconds, soundPlayed])
 
+  // Iniciar el timer
+  useEffect(() => {
+    if (isRunning) {
+      if (isPreparing) {
+        // Iniciar fase de preparación
+        prepStartTimeRef.current = Date.now()
+        prepTargetTimeRef.current = Date.now() + (PREP_TIME * 1000)
+      } else {
+        //Iniciar timer principal
+        if (startTimeRef.current === null) {
+          startTimeRef.current = Date.now()
+          targetTimeRef.current = Date.now() + (seconds * 1000)
+        }
+      }
+      
+      animationFrameRef.current = requestAnimationFrame(updateTimer)
+    }
+    
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+    }
+  }, [isRunning, isPreparing, seconds, updateTimer])
+
+  // Computar valores para display
   const currentDisplay = isPreparing ? prepTimeLeft : timeLeft
   const totalDuration = isPreparing ? PREP_TIME : seconds
   const percentage = (currentDisplay / totalDuration) * 100
