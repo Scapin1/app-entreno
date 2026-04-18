@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 
 const PREP_TIME = 5
 
-// ==================== SONIDO ====================
+// ==================== SONIDO + VIBRACIÓN ====================
 const playSound = () => {
   try {
     // Usar Web Audio API para un beep simple
@@ -40,6 +40,12 @@ const playSound = () => {
     }, 200)
   } catch (e) {
     console.error('Audio error:', e)
+  }
+  
+  // Vibración - patrón: vibrate(ms)
+  if (navigator.vibrate) {
+    navigator.vibrate(200)
+    setTimeout(() => navigator.vibrate(200), 300)
   }
 }
 
