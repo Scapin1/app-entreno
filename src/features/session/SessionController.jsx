@@ -1,19 +1,71 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ChevronLeft, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import Timer from './Timer';
 import ExerciseCard from './ExerciseCard';
 import BlockSummary from './BlockSummary';
+import { saveCurrentSession, getCurrentSession, clearCurrentSession, getHistory } from '../../utils/storage';
 
 const SessionController = ({ day, onBack }) => {
+  const dayId = day.id
+  
   const [blockIndex, setBlockIndex] = useState(0)
   const [exerciseIndex, setExerciseIndex] = useState(0)
   const [currentSet, setCurrentSet] = useState(1)
   const [isResting, setIsResting] = useState(false)
   const [restSeconds, setRestSeconds] = useState(0)
   const [isBlockFinished, setIsBlockFinished] = useState(false)
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false)
 
   const currentBlock = day.blocks[blockIndex]
   const currentExercise = currentBlock.exercises[exerciseIndex]
+
+  // ==================== ESTADO RECOVERY ====================
+  // Guardar estado cuando cambia la navegación
+  useEffect(() => {
+    const stateToSave = {
+      dayId,
+      blockIndex,
+      exerciseIndex,
+      currentSet,
+      isResting,
+      restSeconds,
+      timestamp: Date.now(),
+    }
+    saveCurrentSession(stateToSave)
+  }, [blockIndex, exerciseIndex, currentSet, isResting, restSeconds, dayId])
+
+  // Recover al iniciar si hay estado guardado
+  useEffect(() => {
+    const saved = getCurrentSession()
+    if (saved && saved.dayId === dayId) {
+      // Verificar si no está muy viejo (más de 2 horas)
+      const twoHours = 2 * 60 * 60 * 1000
+      if (Date.now() - saved.timestamp < twoHours) {
+        setBlockIndex(saved.blockIndex || 0)
+        setExerciseIndex(saved.exerciseIndex || 0)
+        setCurrentSet(saved.currentSet || 1)
+        setIsResting(saved.isResting || false)
+        setRestSeconds(saved.restSeconds || 0)
+        setIsRecoveryMode(true)
+      }
+    }
+  }, [dayId])
+
+  // Clean up al terminar
+  const handleSessionComplete = () => {
+    clearCurrentSession()
+    onBack()
+  }
+
+  // ==================== RESULTADOS ANTERIORES ====================
+  const getLastResult = (exerciseName) => {
+    const history = getHistory()
+    const today = new Date().toISOString().split('T')[0]
+    const todaySession = history.find(s => s.date === today && s.dayId === dayId)
+    if (!todaySession) return null
+    const results = todaySession.exercises?.filter(e => e.name === exerciseName) || []
+    return results.length > 0 ? results[results.length - 1] : null
+  }
 
   const handleNext = () => {
     const microPause = currentBlock.config?.micro_pause
@@ -129,9 +181,17 @@ const SessionController = ({ day, onBack }) => {
       setIsBlockFinished(false)
     } else {
       // Entrenamiento terminado
-      onBack()
+      handleSessionComplete()
     }
   }
+
+  // Banner de recovery
+  useEffect(() => {
+    if (isRecoveryMode) {
+      const timer = setTimeout(() => setIsRecoveryMode(false), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [isRecoveryMode])
 
   if (isBlockFinished) {
     return (
@@ -139,6 +199,7 @@ const SessionController = ({ day, onBack }) => {
         blockName={currentBlock.name} 
         onContinue={startNextBlock} 
         isLast={blockIndex === day.blocks.length - 1}
+        onFinish={handleSessionComplete}
       />
     )
   }
@@ -183,6 +244,15 @@ const SessionController = ({ day, onBack }) => {
         </div>
       </div>
 
+      {/* Recovery banner */}
+      {isRecoveryMode && (
+        <div className="fixed top-4 left-4 right-4 z-50 bg-primary text-primary-content py-2 px-4 rounded-xl shadow-lg animate-in fade-in slide-in-from-top">
+          <p className="text-center font-bold text-sm uppercase">
+            Continuando donde lo dejaste...
+          </p>
+        </div>
+      )}
+
       {/* Tarjeta del ejercicio */}
       <div className="flex-grow flex items-center justify-center">
         <ExerciseCard 
@@ -191,6 +261,8 @@ const SessionController = ({ day, onBack }) => {
           onNext={handleNext}
           onTimerComplete={handleNext}
           isCircuitBlock={currentBlock.type === 'circuit'}
+          dayId={dayId}
+          lastResult={getLastResult(currentExercise.name)}
         />
       </div>
 

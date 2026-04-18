@@ -1,7 +1,8 @@
 import React from 'react'
+import { BarChart2 } from 'lucide-react'
 import planData from '../../data/plan.json'
 
-const MainMenu = ({ onSelectDay }) => {
+const MainMenu = ({ onSelectDay, onOpenAnalytics }) => {
   return (
     <div className="flex flex-col gap-4 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
       <p className="text-sm font-bold uppercase text-base-content/60 tracking-widest mb-2 text-center">
@@ -40,6 +41,15 @@ const MainMenu = ({ onSelectDay }) => {
           </button>
         ))}
       </div>
+
+      {/* Botón de Analíticas */}
+      <button
+        onClick={onOpenAnalytics}
+        className="mt-4 btn btn-outline btn-lg w-full rounded-2xl gap-3 font-black uppercase tracking-tighter border-primary/40 hover:bg-primary hover:text-primary-content"
+      >
+        <BarChart2 size={24} />
+        Ver Analíticas
+      </button>
     </div>
   )
 }

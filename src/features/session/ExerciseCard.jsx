@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from 'react'
 import { Play, Square, FastForward, Check } from 'lucide-react'
 import Timer from './Timer'
+import ExerciseFeedback from './ExerciseFeedback'
+import { saveExerciseResult } from '../../utils/storage'
 
-const ExerciseCard = ({ exercise, currentSet = 1, onNext, onTimerComplete, isCircuitBlock = false }) => {
+const ExerciseCard = ({ 
+  exercise, 
+  currentSet = 1, 
+  onNext, 
+  onTimerComplete, 
+  isCircuitBlock = false,
+  dayId = null,
+  lastResult = null,
+}) => {
   const [isTimerRunning, setIsTimerRunning] = useState(false)
   const [timerKey, setTimerKey] = useState(0)
+  const [showFeedback, setShowFeedback] = useState(false)
 
   // Resetear el timer cuando cambia el ejercicio
   useEffect(() => {
@@ -150,13 +161,35 @@ const ExerciseCard = ({ exercise, currentSet = 1, onNext, onTimerComplete, isCir
       {/* Botón de Siguiente */}
       <div className="mt-12 w-full">
         <button 
-          onClick={onNext}
+          onClick={() => setShowFeedback(true)}
           className="btn btn-primary btn-lg w-full rounded-2xl gap-3 text-xl font-black italic uppercase tracking-tighter"
         >
           {isCircuitBlock ? 'Siguiente Ejercicio' : (exercise.sets > 1 && currentSet < exercise.sets ? 'Siguiente Serie' : 'Siguiente')}
           <FastForward size={24} fill="currentColor" />
         </button>
       </div>
+
+      {/* Modal de Feedback */}
+      {showFeedback && (
+        <ExerciseFeedback
+          exercise={exercise}
+          currentSet={currentSet}
+          defaultReps={lastResult?.actual?.reps || exercise.reps || exercise.value}
+          defaultWeight={lastResult?.actual?.weight}
+          onContinue={(feedbackData) => {
+            // Guardar en storage
+            if (dayId && feedbackData?.actual) {
+              saveExerciseResult(dayId, exercise.name, currentSet, feedbackData.actual, feedbackData.feeling)
+            }
+            setShowFeedback(false)
+            onNext()
+          }}
+          onSkip={() => {
+            setShowFeedback(false)
+            onNext()
+          }}
+        />
+      )}
     </div>
   )
 }
