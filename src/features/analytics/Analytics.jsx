@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
-import { TrendingUp, TrendingDown, Minus, Scale, Calendar, Activity, Dumbbell } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, Scale, Calendar, Activity, Dumbbell, Trash2 } from 'lucide-react'
 import planData from '../../data/plan.json'
-import { getHistory, getBodyWeight, saveBodyWeight, getExerciseHistory, getPersonalRecord } from '../../utils/storage'
+import { getHistory, getBodyWeight, saveBodyWeight, getExerciseHistory, getPersonalRecord, deleteSession } from '../../utils/storage'
 
 // Helper para formatear fecha
 const formatDate = (dateStr) => {
@@ -143,16 +143,28 @@ const Analytics = ({ onBack }) => {
                 const dayTitle = planData.days.find(d => d.id === session.dayId)?.title || `Día ${session.dayId}`
                 
                 return (
-                  <div key={i} className="bg-base-200 rounded-xl p-4">
+                  <div key={session.timestamp} className="bg-base-200 rounded-xl p-4">
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <h4 className="font-black uppercase text-sm">{dayTitle}</h4>
                         <p className="text-xs opacity-60">{formatDate(session.date)}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="flex items-center gap-2">
                         <span className="badge badge-primary font-black uppercase">
                           {mins > 0 ? `${mins}m ${secs}s` : `${secs}s`}
                         </span>
+                        <button 
+                          onClick={() => {
+                            if (confirm('¿Eliminar esta sesión?')) {
+                              deleteSession(session.timestamp)
+                              // Force re-render
+                              window.location.reload()
+                            }
+                          }}
+                          className="btn btn-ghost btn-xs btn-circle text-error"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </div>
                     {session.exercises && session.exercises.length > 0 && (

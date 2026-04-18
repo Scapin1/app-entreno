@@ -19,6 +19,16 @@ export const getHistory = () => {
   }
 }
 
+export const deleteSession = (timestamp) => {
+  try {
+    const history = getHistory()
+    const filtered = history.filter(s => s.timestamp !== timestamp)
+    localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(filtered))
+  } catch (e) {
+    console.error('Error deleting session:', e)
+  }
+}
+
 export const saveWorkoutSession = (session) => {
   try {
     const history = getHistory()
