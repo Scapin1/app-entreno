@@ -2,7 +2,7 @@
   "days": [
     {
       "id": 1,
-      "title": "Día 1: Fuerza",
+      "title": "Día 1: Fuerza    ",
       "focus": "Empuje y Tracción (Fuerza)",
       "implements": ["banda elástica", "barra", "mancuernas", "polea", "elíptica"],
       "blocks": [
@@ -94,7 +94,7 @@
     },
     {
       "id": 2,
-      "title": "Día 2: Resistencia/Funcional",
+      "title": "Día 2: Resistencia",
       "focus": "Cardio y Estabilidad",
       "implements": ["elíptica o bicicleta", "mancuernas", "banda elástica", "rueda abdominal"],
       "blocks": [
@@ -135,7 +135,7 @@
     },
     {
       "id": 3,
-      "title": "Día 3: Fuerza",
+      "title": "Día 3: Fuerza    ",
       "focus": "Fuerza (Tren Inferior y Empuje)",
       "implements": ["barra", "mancuernas", "banda elástica", "polea", "bicicleta", "discos"],
       "blocks": [

@@ -137,3 +137,15 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Data backups (localStorage exports - keep private)
+data-backup/
+*.backup.json
+
+# Python cache and local DB artifacts
+**/__pycache__/
+*.py[cod]
+backend/test.db
+
+# External cloned deployment repos
+GymTracker/

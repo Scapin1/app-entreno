@@ -2,10 +2,21 @@ const STORAGE_KEYS = {
   HISTORY: 'entreno_history',
   BODY_WEIGHT: 'entreno_body_weight',
   CURRENT_SESSION: 'entreno_current_session',
+  UI_SETTINGS: 'entreno_ui_settings',
 }
 
 const DEFAULT_HISTORY = []
 const DEFAULT_BODY_WEIGHT = []
+const DEFAULT_UI_SETTINGS = {
+  notifications: true,
+  soundEffects: true,
+  vibration: true,
+  unitSystem: 'kg',
+  defaultRestSeconds: 90,
+  showWeightSeries: true,
+  showRepsSeries: true,
+  showFeelingSeries: true,
+}
 
 // ==================== HISTORIAL DE ENTRENAMIENTOS ====================
 
@@ -70,7 +81,19 @@ export const saveWorkoutSession = (session) => {
       date: new Date().toISOString().split('T')[0],
       timestamp: Date.now(),
     }
-    history.unshift(sessionWithDate) // Agregar al inicio (más reciente primero)
+
+    const existingIndex = sessionWithDate.dayId != null
+      ? history.findIndex(s => s.date === sessionWithDate.date && s.dayId === sessionWithDate.dayId)
+      : -1
+
+    if (existingIndex >= 0) {
+      history[existingIndex] = {
+        ...history[existingIndex],
+        ...sessionWithDate,
+      }
+    } else {
+      history.unshift(sessionWithDate) // Agregar al inicio (más reciente primero)
+    }
     localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history))
     return sessionWithDate
   } catch (e) {
@@ -173,7 +196,8 @@ export const getCurrentSession = () => {
 
 export const saveCurrentSession = (sessionState) => {
   try {
-    localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(sessionState))
+    const previous = getCurrentSession() || {}
+    localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify({ ...previous, ...sessionState }))
   } catch (e) {
     console.error('Error saving current session:', e)
   }
@@ -184,6 +208,32 @@ export const clearCurrentSession = () => {
     localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION)
   } catch (e) {
     console.error('Error clearing current session:', e)
+  }
+}
+
+// ==================== UI SETTINGS ====================
+
+export const getUISettings = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.UI_SETTINGS)
+    if (!raw) return { ...DEFAULT_UI_SETTINGS }
+    const parsed = JSON.parse(raw)
+    return { ...DEFAULT_UI_SETTINGS, ...(parsed || {}) }
+  } catch (e) {
+    console.error('Error reading UI settings:', e)
+    return { ...DEFAULT_UI_SETTINGS }
+  }
+}
+
+export const saveUISettings = (partialSettings) => {
+  try {
+    const previous = getUISettings()
+    const next = { ...previous, ...(partialSettings || {}) }
+    localStorage.setItem(STORAGE_KEYS.UI_SETTINGS, JSON.stringify(next))
+    return next
+  } catch (e) {
+    console.error('Error saving UI settings:', e)
+    return getUISettings()
   }
 }
 

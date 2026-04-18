@@ -1,142 +1,141 @@
 import React, { useState, useEffect } from 'react'
-import { ChevronLeft, Dumbbell, BarChart2 } from 'lucide-react'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import { colors } from './styles/tokens'
+import LoginScreen from './features/auth/LoginScreen'
+import ProfileSelector from './features/profile/ProfileSelector'
 import MainMenu from './features/menu/MainMenu'
 import TrainingPreview from './features/preview/TrainingPreview'
 import SessionController from './features/session/SessionController'
 import Analytics from './features/analytics/Analytics'
-import { getCurrentSession, clearCurrentSession } from './utils/storage'
-import planData from './data/plan.json'
+import Settings from './features/settings/Settings'
 
-function App() {
-  const [screen, setScreen] = useState('menu')
+function AppContent() {
+  const { isAuthenticated, profile, logout, loading } = useAuth()
+  const [screen, setScreen] = useState('login')
   const [selectedDay, setSelectedDay] = useState(null)
-  const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(false)
-  const [savedSession, setSavedSession] = useState(null)
-  const [recoveryState, setRecoveryState] = useState(null)
 
-  // Check for recovery session on mount
   useEffect(() => {
-    const saved = getCurrentSession()
-    if (saved && saved.dayId) {
-      // Verificar si no está muy viejo (más de 2 horas)
-      const twoHours = 2 * 60 * 60 * 1000
-      if (Date.now() - saved.timestamp < twoHours) {
-        setSavedSession(saved)
-        setRecoveryState(saved)
-        setShowRecoveryPrompt(true)
-      } else {
-        clearCurrentSession()
-      }
+    if (!isAuthenticated) {
+      setScreen('login')
+    } else if (!profile) {
+      setScreen('profile-select')
+    } else {
+      setScreen('menu')
     }
-  }, [])
+  }, [isAuthenticated, profile])
 
-  const handleDaySelect = (day) => {
+  const handleSelectDay = (day) => {
     setSelectedDay(day)
     setScreen('preview')
   }
 
-  const handleStartTraining = () => {
+  const handleStartWorkout = () => {
     setScreen('session')
   }
 
-  const handleGoBack = () => {
-    if (screen === 'preview') setScreen('menu')
-    if (screen === 'session') setScreen('preview')
-    if (screen === 'analytics') setScreen('menu')
-  }
-
-  const handleOpenAnalytics = () => {
-    setScreen('analytics')
-  }
-
-  const handleRecoveryResume = () => {
-    // Find the day that was being trained
-    const day = planData.days.find(d => d.id === savedSession.dayId)
-    if (day) {
-      setSelectedDay(day)
-      setRecoveryState(savedSession)
-      setScreen('session')
+  const handleBack = () => {
+    if (screen === 'preview' || screen === 'session') {
+      setScreen('menu')
+      setSelectedDay(null)
+    } else if (screen === 'analytics' || screen === 'settings') {
+      setScreen('menu')
     }
-    setShowRecoveryPrompt(false)
   }
 
-  const handleRecoveryDismiss = () => {
-    clearCurrentSession()
-    setShowRecoveryPrompt(false)
+  const handleLogout = () => {
+    logout()
   }
 
+  const navigate = (targetScreen) => {
+    // Map navigation IDs to screen names
+    const screenMap = {
+      'days': 'menu',
+      'analytics': 'analytics',
+      'settings': 'settings',
+    }
+    const screen = screenMap[targetScreen] || targetScreen
+    if (screen === 'menu') {
+      setSelectedDay(null)
+    }
+    setScreen(screen)
+  }
+
+  // Loading spinner
+  if (loading && isAuthenticated && !profile) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        backgroundColor: colors.background, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+      }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '48px', color: colors.primary, animation: 'spin 1s linear infinite' }}>
+          sync
+        </span>
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
+  }
+
+  // Auth Screen
+  if (!isAuthenticated) {
+    return <LoginScreen />
+  }
+
+  // Profile Select
+  if (!profile) {
+    return <ProfileSelector />
+  }
+
+  // Main Screens
   return (
-    <div className="max-w-md mx-auto min-h-screen p-4 flex flex-col items-center justify-start">
-      <header className="w-full mb-8 flex items-center justify-center relative">
-        {screen !== 'menu' && (
-          <button 
-            onClick={handleGoBack} 
-            className="btn btn-ghost btn-circle absolute left-0"
-            aria-label="Volver"
-          >
-            <ChevronLeft size={32} />
-          </button>
-        )}
-        <div className="flex items-center gap-2">
-          <div className="bg-primary text-primary-content p-2 rounded-xl rotate-12 shadow-lg">
-            <Dumbbell size={28} strokeWidth={3} />
-          </div>
-          <h1 className="text-4xl font-black text-primary uppercase tracking-tighter italic">Entreno App</h1>
-        </div>
-      </header>
-
-      <main className="w-full flex-grow">
-        {screen === 'menu' && (
-          <MainMenu onSelectDay={handleDaySelect} onOpenAnalytics={handleOpenAnalytics} />
-        )}
-        
-        {screen === 'preview' && (
-          <TrainingPreview 
-            day={selectedDay} 
-            onStart={handleStartTraining} 
-            onBack={handleGoBack} 
-          />
-        )}
-
-        {screen === 'session' && (
-          <SessionController 
-            day={selectedDay} 
-            onBack={handleGoBack}
-            recoveryState={recoveryState}
-          />
-        )}
-
-        {screen === 'analytics' && (
-          <Analytics onBack={handleGoBack} />
-        )}
-      </main>
-
-      {/* Recovery prompt modal */}
-      {showRecoveryPrompt && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
-          <div className="bg-base-100 p-6 rounded-2xl m-4">
-            <h3 className="font-black text-xl mb-2">¿Continuar entrenamiento?</h3>
-            <p className="text-sm opacity-70 mb-4">
-              Tenías un entrenamiento en progreso. ¿Querés continuar donde lo dejaste?
-            </p>
-            <div className="flex gap-2">
-              <button 
-                onClick={handleRecoveryDismiss}
-                className="btn btn-ghost flex-1"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleRecoveryResume}
-                className="btn btn-primary flex-1"
-              >
-                Continuar
-              </button>
-            </div>
-          </div>
-        </div>
+    <>
+      {screen === 'menu' && (
+        <MainMenu 
+          onSelectDay={handleSelectDay}
+          onNavigate={navigate}
+        />
       )}
-    </div>
+
+      {screen === 'preview' && selectedDay && (
+        <TrainingPreview 
+          day={selectedDay}
+          onStart={handleStartWorkout}
+          onBack={handleBack}
+          onNavigate={navigate}
+        />
+      )}
+
+      {screen === 'session' && selectedDay && (
+        <SessionController 
+          day={selectedDay}
+          onBack={handleBack}
+        />
+      )}
+
+      {screen === 'analytics' && (
+        <Analytics 
+          onBack={handleBack}
+          onNavigate={navigate}
+        />
+      )}
+
+      {screen === 'settings' && (
+        <Settings 
+          onBack={handleBack}
+          onNavigate={navigate}
+        />
+      )}
+    </>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }
 

@@ -1,453 +1,1233 @@
-import React, { useState, useMemo } from 'react'
-import { TrendingUp, TrendingDown, Minus, Scale, Calendar, Activity, Dumbbell, Trash2, Download, Upload } from 'lucide-react'
-import planData from '../../data/plan.json'
-import { getHistory, getBodyWeight, saveBodyWeight, getExerciseHistory, getPersonalRecord, deleteSession, exportAllData, importAllData } from '../../utils/storage'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
+import { colors, typography, borderRadius } from '../../styles/tokens'
+import { Sidebar, BottomNav } from '../../components/navigation'
+import { Badge } from '../../components/ui'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
+import { analyticsAPI, sessionsAPI, weightAPI } from '../../utils/api'
+import { getUISettings } from '../../utils/storage'
+import ReactECharts from 'echarts-for-react'
 
-// Helper para formatear fecha
-const formatDate = (dateStr) => {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
-}
+const Analytics = ({ onNavigate }) => {
+  const { profile } = useAuth()
+  const { isDesktop } = useBreakpoint()
+  const [timeRange, setTimeRange] = useState('12m')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [summary, setSummary] = useState(null)
+  const [statsData, setStatsData] = useState(null)
+  const [frequency, setFrequency] = useState([])
+  const [weightHistory, setWeightHistory] = useState([])
+  const [adherence, setAdherence] = useState({ days: [], max_count: 0 })
+  const [sessions, setSessions] = useState([])
+  const [selectedExercise, setSelectedExercise] = useState('')
+  const [progressSeriesVisibility, setProgressSeriesVisibility] = useState(() => {
+    const ui = getUISettings()
+    return {
+      weight: ui.showWeightSeries !== false,
+      reps: ui.showRepsSeries !== false,
+      feeling: ui.showFeelingSeries !== false,
+    }
+  })
+  const [exerciseProgress, setExerciseProgress] = useState({ exercise_name: '', points: [], total_points: 0 })
+  const [loadingExerciseProgress, setLoadingExerciseProgress] = useState(false)
+  const [newWeight, setNewWeight] = useState('')
+  const [weightDate, setWeightDate] = useState(() => {
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = `${now.getMonth() + 1}`.padStart(2, '0')
+    const d = `${now.getDate()}`.padStart(2, '0')
+    return `${y}-${m}-${d}`
+  })
+  const [savingWeight, setSavingWeight] = useState(false)
+  const [seedingDemo, setSeedingDemo] = useState(false)
 
-// Componente de gráfico simple de barras
-const SimpleBarChart = ({ data, labelKey, valueKey, maxValue }) => {
-  if (!data || data.length === 0) {
-    return <p className="text-center opacity-50 py-8">Sin datos aún</p>
+  const feelingScoreMap = {
+    easy: 4,
+    good: 3,
+    hard: 2,
+    failed: 1,
   }
 
-  const max = maxValue || Math.max(...data.map(d => d[valueKey])) || 10
+  const formatDateISO = (date) => {
+    const d = new Date(date)
+    const year = d.getFullYear()
+    const month = `${d.getMonth() + 1}`.padStart(2, '0')
+    const day = `${d.getDate()}`.padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
 
-  return (
-    <div className="flex items-end gap-1 h-32 w-full px-2">
-      {data.map((d, i) => (
-        <div key={i} className="flex-1 flex flex-col items-center">
-          <div 
-            className="w-full bg-primary rounded-t"
-            style={{ height: `${(d[valueKey] / max) * 100}%` }}
-          />
-          <span className="text-[8px] opacity-50 mt-1 truncate w-full text-center">
-            {d[labelKey]}
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
+  const formatShortDate = (iso) => {
+    if (!iso || typeof iso !== 'string') return ''
+    const parts = iso.split('-')
+    if (parts.length !== 3) return iso
+    return `${parts[2]}/${parts[1]}`
+  }
 
-// Componente de tendencia
-const TrendIndicator = ({ current, previous }) => {
-  if (!previous || previous === 0) return null
-  
-  const diff = current - previous
-  const percentChange = ((diff / previous) * 100).toFixed(1)
-  const isUp = diff > 0
-  
-  return (
-    <div className={`flex items-center gap-1 text-xs ${isUp ? 'text-success' : 'text-error'}`}>
-      {isUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-      <span className="font-bold">{Math.abs(percentChange)}%</span>
-    </div>
-  )
-}
+  const getRangeStartDate = (range) => {
+    const now = new Date()
+    const start = new Date(now)
+    if (range === '3m') start.setMonth(now.getMonth() - 3)
+    else if (range === '6m') start.setMonth(now.getMonth() - 6)
+    else start.setMonth(now.getMonth() - 12)
+    return formatDateISO(start)
+  }
 
-// Screen de Analytics
-const Analytics = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState('sessions')
-  const [showWeightModal, setShowWeightModal] = useState(false)
-  const [newWeight, setNewWeight] = useState('')
-  const [showDataModal, setShowDataModal] = useState(false)
-  const [importText, setImportText] = useState('')
+  const getRangeEndDate = () => formatDateISO(new Date())
 
-  const history = useMemo(() => getHistory(), [])
-  const bodyWeights = useMemo(() => getBodyWeight(), [])
+  const loadAnalytics = async (range = timeRange) => {
+    if (!profile?.id) return
 
-  // Obtener lista de ejercicios únicos con datos
-  const exerciseList = useMemo(() => {
-    const names = new Set()
-    history.forEach(session => {
-      session.exercises?.forEach(ex => names.add(ex.name))
-    })
-    return Array.from(names).sort()
-  }, [history])
+    setLoading(true)
+    setError('')
+    try {
+      const startDate = getRangeStartDate(range)
+      const endDate = getRangeEndDate()
 
-  // Stats generales
-  const stats = useMemo(() => {
-    const totalWorkouts = history.length
-    const thisMonth = history.filter(h => {
-      const d = new Date(h.date)
-      const now = new Date()
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-    }).length
-    
-    return { totalWorkouts, thisMonth }
-  }, [history])
+      const [summaryRes, statsRes, freqRes, weightRes, adherenceRes, sessionsRes] = await Promise.all([
+        analyticsAPI.getSummary(profile.id),
+        analyticsAPI.getStats(profile.id, startDate, endDate),
+        analyticsAPI.getFrequency(profile.id, 8),
+        analyticsAPI.getWeightHistory(profile.id, 60),
+        analyticsAPI.getAdherence(profile.id, startDate, endDate),
+        sessionsAPI.list(profile.id, 8, 0),
+      ])
 
-  // Handle guardar peso
-  const handleSaveWeight = () => {
-    if (newWeight && parseFloat(newWeight) > 0) {
-      saveBodyWeight(newWeight)
-      setNewWeight('')
-      setShowWeightModal(false)
+      setSummary(summaryRes)
+      setStatsData(statsRes)
+      setFrequency(Array.isArray(freqRes) ? freqRes : [])
+      const suggestedExercise = Array.isArray(freqRes) && freqRes.length > 0 ? freqRes[0].exercise : ''
+      setSelectedExercise((prev) => prev || suggestedExercise)
+      setWeightHistory(Array.isArray(weightRes) ? weightRes : [])
+      setAdherence(adherenceRes || { days: [], max_count: 0 })
+      setSessions(Array.isArray(sessionsRes) ? sessionsRes : [])
+    } catch (e) {
+      setError('No pudimos cargar analytics del backend')
+    } finally {
+      setLoading(false)
     }
   }
 
-  return (
-    <div className="flex flex-col h-full w-full animate-in fade-in duration-300">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <button onClick={onBack} className="btn btn-ghost btn-sm gap-1 uppercase font-black italic">
-          ← Volver
-        </button>
-        <h2 className="text-xl font-black uppercase">Analíticas</h2>
-        <div className="w-16" />
-      </div>
+  useEffect(() => {
+    if (!profile?.id) return
 
-      {/* Tabs */}
-      <div className="tabs tabs-boxed mb-4">
-        <button 
-          className={`tab flex-1 ${activeTab === 'sessions' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('sessions')}
-        >
-          <Calendar size={16} />
-          <span className="ml-1">Sesiones</span>
-        </button>
-        <button 
-          className={`tab flex-1 ${activeTab === 'exercises' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('exercises')}
-        >
-          <Dumbbell size={16} />
-          <span className="ml-1">Ejercicios</span>
-        </button>
-        <button 
-          className={`tab flex-1 ${activeTab === 'weight' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('weight')}
-        >
-          <Scale size={16} />
-          <span className="ml-1">Peso</span>
-        </button>
-      </div>
+    loadAnalytics(timeRange)
+  }, [profile?.id, timeRange])
 
-      {/* Contenido según tab */}
-      {activeTab === 'sessions' && (
-        <div className="flex-1 overflow-auto">
-          <h3 className="font-bold text-sm mb-3">Últimas sesiones</h3>
-          {history.length === 0 ? (
-            <div className="text-center py-12 opacity-50">
-              <Calendar size={48} className="mx-auto mb-4 opacity-50" />
-              <p>No hay sesiones aún</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {history.slice(0, 20).map((session, i) => {
-                const duration = session.totalDuration || session.exercises?.reduce((acc, ex) => acc + (ex.duration || 0), 0) || 0
-                const mins = Math.floor(duration / 60)
-                const secs = duration % 60
-                const dayTitle = planData.days.find(d => d.id === session.dayId)?.title || `Día ${session.dayId}`
-                
-                return (
-                  <div key={session.timestamp} className="bg-base-200 rounded-xl p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h4 className="font-black uppercase text-sm">{dayTitle}</h4>
-                        <p className="text-xs opacity-60">{formatDate(session.date)}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="badge badge-primary font-black uppercase">
-                          {mins > 0 ? `${mins}m ${secs}s` : `${secs}s`}
-                        </span>
-                        <button 
-                          onClick={() => {
-                            if (confirm('¿Eliminar esta sesión?')) {
-                              deleteSession(session.timestamp)
-                              // Force re-render
-                              window.location.reload()
-                            }
-                          }}
-                          className="btn btn-ghost btn-xs btn-circle text-error"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                    {session.exercises && session.exercises.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-base-300">
-                        <p className="text-xs opacity-50 mb-1">Tiempo por ejercicio:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {session.exercises.slice(0, 8).map((ex, j) => (
-                            <span key={j} className="text-[10px] bg-base-300 px-2 py-1 rounded">
-                              {ex.name?.split(' ')[0]}: {ex.duration ? `${ex.duration}s` : '-'}
-                            </span>
-                          ))}
-                          {session.exercises.length > 8 && (
-                            <span className="text-[10px] opacity-50 px-2 py-1">
-                              +{session.exercises.length - 8} más
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
+  useEffect(() => {
+    if (!profile?.id || !selectedExercise) return
 
-      {activeTab === 'exercises' && (
-        <div className="flex-1 overflow-auto">
-          {/* Stats rápidos */}
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            <div className="stats shadow">
-              <div className="stat px-4 py-2">
-                <div className="stat-title text-xs uppercase">Entrenos</div>
-                <div className="stat-value text-2xl">{stats.totalWorkouts}</div>
-              </div>
+    const loadExerciseProgress = async () => {
+      setLoadingExerciseProgress(true)
+      try {
+        const startDate = getRangeStartDate(timeRange)
+        const endDate = getRangeEndDate()
+        const data = await analyticsAPI.getExerciseProgress(profile.id, selectedExercise, startDate, endDate, 220)
+        setExerciseProgress(data || { exercise_name: selectedExercise, points: [], total_points: 0 })
+      } catch {
+        setExerciseProgress({ exercise_name: selectedExercise, points: [], total_points: 0 })
+      } finally {
+        setLoadingExerciseProgress(false)
+      }
+    }
+
+    loadExerciseProgress()
+  }, [profile?.id, selectedExercise, timeRange])
+
+  const handleAddWeight = async () => {
+    if (!profile?.id || savingWeight) return
+
+    const numericWeight = Number(newWeight)
+    if (!newWeight || Number.isNaN(numericWeight) || numericWeight <= 0) {
+      setError('Ingresá un peso válido en kg')
+      return
+    }
+
+    setSavingWeight(true)
+    setError('')
+    try {
+      await weightAPI.add(profile.id, String(numericWeight), weightDate)
+      setNewWeight('')
+      await loadAnalytics(timeRange)
+    } catch (e) {
+      setError('No pudimos guardar el peso corporal')
+    } finally {
+      setSavingWeight(false)
+    }
+  }
+
+  const handleSeedDemoData = async () => {
+    if (!profile?.id || seedingDemo) return
+
+    setSeedingDemo(true)
+    setError('')
+    try {
+      await analyticsAPI.seedDemo(profile.id, 12)
+      await loadAnalytics(timeRange)
+    } catch (e) {
+      setError('No pudimos generar datos demo')
+    } finally {
+      setSeedingDemo(false)
+    }
+  }
+
+  const stats = useMemo(() => {
+    const totalWorkouts = summary?.total_workouts ?? statsData?.total_workouts ?? 0
+    const totalMinutes = statsData?.total_duration_minutes ?? 0
+    const avgDurationMinutes = statsData?.average_duration_minutes ?? 0
+    const now = new Date()
+    const month = `${now.getMonth() + 1}`.padStart(2, '0')
+    const year = now.getFullYear()
+    const thisMonth = adherence?.days?.filter((d) => d.date?.startsWith(`${year}-${month}`)).reduce((acc, d) => acc + (d.count || 0), 0) || 0
+
+    return {
+      totalWorkouts,
+      thisMonth,
+      totalHours: Math.max(0, Math.round(totalMinutes / 60)),
+      avgDuration: `${Math.max(0, Math.round(avgDurationMinutes))}m`,
+    }
+  }, [summary, statsData, adherence])
+
+  const sessionsView = useMemo(() => sessions.map((session, index) => ({
+    id: session.id || session.timestamp || index,
+    day: `Día ${session.day_id ?? '-'}`,
+    date: session.date || '-',
+    duration: session.total_duration ? `${Math.round(session.total_duration / 60)}m` : '0m',
+    completed: Number(session.is_completed) === 1,
+  })), [sessions])
+
+  const maxWeightChartPoints = useMemo(() => {
+    if (timeRange === '3m') return 20
+    if (timeRange === '6m') return 18
+    return 16
+  }, [timeRange])
+
+  const weightChartHistory = useMemo(
+    () => weightHistory.slice(-maxWeightChartPoints),
+    [weightHistory, maxWeightChartPoints]
+  )
+
+  const weightMinMax = useMemo(() => {
+    const nums = weightChartHistory.map((w) => Number(w.weight)).filter((w) => !Number.isNaN(w))
+    if (nums.length === 0) {
+      return { min: 0, max: 0, range: 0, zoomMode: 'none' }
+    }
+
+    const min = Math.min(...nums)
+    const max = Math.max(...nums)
+    const range = Math.max(0.1, max - min)
+
+    return {
+      min,
+      max,
+      range,
+      zoomMode: range > 6 ? 'zoomed_out' : 'normal',
+    }
+  }, [weightChartHistory])
+
+  const latestWeightEntry = useMemo(
+    () => (weightHistory.length > 0 ? weightHistory[weightHistory.length - 1] : null),
+    [weightHistory]
+  )
+
+  const recentWeightEntries = useMemo(
+    () => [...weightHistory].slice(-8).reverse(),
+    [weightHistory]
+  )
+
+
+  const heatmapColumns = useMemo(() => {
+    const dayMap = new Map((adherence?.days || []).map((d) => [d.date, d.count]))
+    const end = new Date(adherence?.end_date || getRangeEndDate())
+    const start = new Date(adherence?.start_date || getRangeStartDate(timeRange))
+    const startAligned = new Date(start)
+    const weekday = (startAligned.getDay() + 6) % 7
+    startAligned.setDate(startAligned.getDate() - weekday)
+
+    const weeks = []
+    const cursor = new Date(startAligned)
+    while (cursor <= end) {
+      const week = []
+      for (let i = 0; i < 7; i += 1) {
+        const day = new Date(cursor)
+        day.setDate(cursor.getDate() + i)
+        const key = formatDateISO(day)
+        const inRange = day >= start && day <= end
+        week.push({ date: key, count: inRange ? (dayMap.get(key) || 0) : null })
+      }
+      weeks.push(week)
+      cursor.setDate(cursor.getDate() + 7)
+    }
+    return weeks
+  }, [adherence, timeRange])
+
+  const weightChartStartEnd = useMemo(() => {
+    if (weightChartHistory.length === 0) return { start: '', end: '' }
+    return {
+      start: weightChartHistory[0]?.date || '',
+      end: weightChartHistory[weightChartHistory.length - 1]?.date || '',
+    }
+  }, [weightChartHistory])
+
+  const exerciseProgressPoints = exerciseProgress?.points || []
+
+  const maxExercisePlotPoints = 48
+
+  const weightLineData = useMemo(() => {
+    const points = weightChartHistory
+      .map((p, idx) => {
+        const value = Number(p.weight)
+        if (Number.isNaN(value)) return null
+        return {
+          x: p.date,
+          y: Number(value.toFixed(2)),
+          date: p.date,
+        }
+      })
+      .filter(Boolean)
+
+    if (points.length === 0) return []
+    return [
+      {
+        id: 'Peso corporal',
+                      data: points.map((point) => ({ ...point, x: point.date })),
+      },
+    ]
+  }, [weightChartHistory])
+
+  const weightChartInsights = useMemo(() => {
+    const values = weightChartHistory
+      .map((entry) => ({ date: entry.date, value: Number(entry.weight) }))
+      .filter((entry) => !Number.isNaN(entry.value))
+
+    if (values.length === 0) return null
+
+    const latest = values[values.length - 1]
+    const min = Math.min(...values.map((entry) => entry.value))
+    const max = Math.max(...values.map((entry) => entry.value))
+
+    return {
+      latest: latest.value,
+      latestDate: latest.date,
+      min,
+      max,
+    }
+  }, [weightChartHistory])
+
+  const exerciseTimelineSeries = useMemo(() => {
+    const recent = exerciseProgressPoints.slice(-220)
+    if (recent.length === 0) {
+      return { series: [], dates: [], startDate: '', endDate: '' }
+    }
+
+    const byDate = new Map()
+    recent.forEach((point) => {
+      const key = point.session_date
+      if (!key) return
+
+      if (!byDate.has(key)) {
+        byDate.set(key, {
+          date: key,
+          weightValues: [],
+          repsValues: [],
+          feelingValues: [],
+        })
+      }
+
+      const bucket = byDate.get(key)
+      if (typeof point.actual_weight === 'number') bucket.weightValues.push(Number(point.actual_weight))
+      if (typeof point.actual_reps === 'number') bucket.repsValues.push(Number(point.actual_reps))
+      if (point.feeling && feelingScoreMap[point.feeling] != null) bucket.feelingValues.push(Number(feelingScoreMap[point.feeling]))
+    })
+
+    const dates = Array.from(byDate.keys()).sort()
+    const clippedDates = dates.slice(-maxExercisePlotPoints)
+    const daily = clippedDates.map((d) => {
+      const row = byDate.get(d)
+
+      const avg = (arr) => {
+        if (!arr || arr.length === 0) return null
+        return arr.reduce((sum, val) => sum + val, 0) / arr.length
+      }
+
+      return {
+        date: d,
+        weightAvg: avg(row.weightValues),
+        repsAvg: avg(row.repsValues),
+        feelingAvg: avg(row.feelingValues),
+      }
+    })
+
+    const weightSeries = daily.map((d) => (d.weightAvg != null ? Number(d.weightAvg.toFixed(2)) : null))
+    const repsSeries = daily.map((d) => (d.repsAvg != null ? Number(d.repsAvg.toFixed(2)) : null))
+    const feelingSeries = daily.map((d) => (d.feelingAvg != null ? Number(d.feelingAvg.toFixed(2)) : null))
+
+    const series = []
+    if (progressSeriesVisibility.weight && weightSeries.some((v) => v != null)) {
+      series.push({ id: 'Peso real', kind: 'weight', color: colors.secondary, data: weightSeries, yAxisIndex: 0 })
+    }
+    if (progressSeriesVisibility.reps && repsSeries.some((v) => v != null)) {
+      series.push({ id: 'Reps reales', kind: 'reps', color: colors.primary, data: repsSeries, yAxisIndex: 1 })
+    }
+    if (progressSeriesVisibility.feeling && feelingSeries.some((v) => v != null)) {
+      series.push({ id: 'Feeling', kind: 'feeling', color: colors.tertiary, data: feelingSeries, yAxisIndex: 2 })
+    }
+
+    return {
+      series,
+      dates: clippedDates,
+      startDate: clippedDates[0] || '',
+      endDate: clippedDates[clippedDates.length - 1] || '',
+    }
+  }, [
+    exerciseProgressPoints,
+    progressSeriesVisibility,
+    feelingScoreMap,
+  ])
+
+  const formatOverlayRealValue = (kind, rawValue) => {
+    if (rawValue == null || Number.isNaN(Number(rawValue))) return '-'
+    const value = Number(rawValue)
+    if (kind === 'weight') return `${value.toFixed(2)} kg`
+    if (kind === 'reps') return `${value.toFixed(2)} reps`
+    if (kind === 'feeling') {
+      const rounded = Math.round(value)
+      const label = ({ 1: 'failed', 2: 'hard', 3: 'good', 4: 'easy' }[rounded]) || `${value.toFixed(2)}`
+      return `${label} (${value.toFixed(2)})`
+    }
+    return `${value.toFixed(2)}`
+  }
+
+  const overlaySeriesInsights = useMemo(() => {
+    const series = exerciseTimelineSeries.series || []
+    return series
+      .map((serie) => {
+        const raws = serie.data
+          .map((point) => Number(point))
+          .filter((val) => !Number.isNaN(val))
+
+        if (raws.length === 0 || serie.data.length === 0) return null
+
+        const latestIndex = [...serie.data].map((v, idx) => ({ v, idx })).reverse().find((item) => item.v != null)?.idx ?? -1
+        const latestValue = latestIndex >= 0 ? Number(serie.data[latestIndex]) : null
+        const latestDate = latestIndex >= 0 ? exerciseTimelineSeries.dates[latestIndex] : ''
+        const min = Math.min(...raws)
+        const max = Math.max(...raws)
+
+        return {
+          id: serie.id,
+          kind: serie.kind,
+          latest: latestValue,
+          latestDate,
+          min,
+          max,
+        }
+      })
+      .filter(Boolean)
+  }, [exerciseTimelineSeries])
+
+  const weightChartOption = useMemo(() => {
+    const dates = weightChartHistory.map((entry) => entry.date)
+    const values = weightChartHistory.map((entry) => Number(entry.weight))
+
+    return {
+      backgroundColor: 'transparent',
+      animation: false,
+      grid: { top: 24, right: 16, bottom: 48, left: 56 },
+      tooltip: {
+        trigger: 'axis',
+        formatter: (params) => {
+          const p = params?.[0]
+          if (!p) return ''
+          return `${p.axisValue}<br/><b>Peso:</b> ${Number(p.data).toFixed(2)} kg`
+        },
+      },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisLabel: {
+          color: colors.onSurfaceVariant,
+          formatter: (value) => formatShortDate(value),
+          interval: Math.max(0, Math.ceil((dates.length || 1) / 6) - 1),
+        },
+        axisLine: { lineStyle: { color: colors.surfaceContainerHighest } },
+      },
+      yAxis: {
+        type: 'value',
+        name: 'Peso (kg)',
+        nameTextStyle: { color: colors.onSurfaceVariant },
+        axisLabel: { color: colors.onSurfaceVariant },
+        splitLine: { lineStyle: { color: colors.surfaceContainerHighest } },
+      },
+      series: [
+        {
+          name: 'Peso corporal',
+          type: 'line',
+          smooth: false,
+          showSymbol: true,
+          symbolSize: 6,
+          connectNulls: false,
+          data: values,
+          lineStyle: { width: 2, color: colors.secondary },
+          itemStyle: { color: colors.secondary },
+        },
+      ],
+    }
+  }, [weightChartHistory])
+
+  const exerciseOverlayOption = useMemo(() => {
+    const dates = exerciseTimelineSeries.dates || []
+    if (dates.length === 0) {
+      return {
+        backgroundColor: 'transparent',
+        animation: false,
+        xAxis: { type: 'category', data: [] },
+        yAxis: [{ type: 'value' }],
+        series: [],
+      }
+    }
+
+    const series = (exerciseTimelineSeries.series || []).map((serie) => ({
+      name: serie.id,
+      type: 'line',
+      yAxisIndex: serie.yAxisIndex,
+      showSymbol: true,
+      symbolSize: 6,
+      connectNulls: false,
+      smooth: false,
+      data: serie.data,
+      lineStyle: { width: 2, color: serie.color },
+      itemStyle: { color: serie.color },
+    }))
+
+    return {
+      backgroundColor: 'transparent',
+      animation: false,
+      legend: {
+        top: 0,
+        textStyle: { color: colors.onSurfaceVariant, fontSize: 11 },
+      },
+      grid: { top: 36, right: 96, bottom: 50, left: 56 },
+      tooltip: {
+        trigger: 'axis',
+        formatter: (params) => {
+          if (!Array.isArray(params) || params.length === 0) return ''
+          const date = params[0].axisValue
+          const lines = params
+            .filter((p) => p.data != null)
+            .map((p) => {
+              const kind = p.seriesName === 'Peso real' ? 'weight' : p.seriesName === 'Reps reales' ? 'reps' : 'feeling'
+              return `${p.marker} <b>${p.seriesName}:</b> ${formatOverlayRealValue(kind, p.data)}`
+            })
+          return [date, ...lines].join('<br/>')
+        },
+      },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisLabel: {
+          color: colors.onSurfaceVariant,
+          formatter: (value) => formatShortDate(value),
+          interval: Math.max(0, Math.ceil((dates.length || 1) / 8) - 1),
+        },
+        axisLine: { lineStyle: { color: colors.surfaceContainerHighest } },
+      },
+      yAxis: [
+        {
+          type: 'value',
+          name: 'Peso (kg)',
+          position: 'left',
+          axisLabel: { color: colors.onSurfaceVariant },
+          nameTextStyle: { color: colors.onSurfaceVariant },
+          splitLine: { lineStyle: { color: colors.surfaceContainerHighest } },
+        },
+        {
+          type: 'value',
+          name: 'Reps',
+          position: 'right',
+          offset: 0,
+          axisLabel: { color: colors.onSurfaceVariant },
+          nameTextStyle: { color: colors.onSurfaceVariant },
+          splitLine: { show: false },
+        },
+        {
+          type: 'value',
+          name: 'Feeling',
+          position: 'right',
+          offset: 56,
+          min: 1,
+          max: 4,
+          interval: 1,
+          axisLabel: {
+            color: colors.onSurfaceVariant,
+            formatter: (v) => {
+              const n = Number(v)
+              return ({ 1: 'failed', 2: 'hard', 3: 'good', 4: 'easy' }[n] || `${v}`)
+            },
+          },
+          nameTextStyle: { color: colors.onSurfaceVariant },
+          splitLine: { show: false },
+        },
+      ],
+      series,
+    }
+  }, [exerciseTimelineSeries])
+
+  const getAdherenceCellStyle = (count) => {
+    if (count == null) {
+      return {
+        ...styles.heatCell,
+        backgroundColor: 'transparent',
+        border: '1px solid transparent',
+      }
+    }
+
+    if (count <= 0) {
+      return {
+        ...styles.heatCell,
+        backgroundColor: 'transparent',
+        border: `1px dashed ${colors.surfaceContainerHighest}`,
+      }
+    }
+
+    if (count === 1) {
+      return {
+        ...styles.heatCell,
+        backgroundColor: '#7ee787',
+        border: '1px solid rgba(126, 231, 135, 0.65)',
+      }
+    }
+
+    return {
+      ...styles.heatCell,
+      backgroundColor: '#1f9d3a',
+      border: '1px solid rgba(31, 157, 58, 0.95)',
+      boxShadow: '0 0 0 1px rgba(31, 157, 58, 0.22) inset',
+    }
+  }
+
+  const topExercisesOption = useMemo(() => {
+    const items = frequency.slice(0, 8)
+    return {
+      backgroundColor: 'transparent',
+      animation: false,
+      grid: { top: 14, right: 18, bottom: 48, left: 120 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      xAxis: {
+        type: 'value',
+        axisLabel: { color: colors.onSurfaceVariant },
+        splitLine: { lineStyle: { color: colors.surfaceContainerHighest } },
+      },
+      yAxis: {
+        type: 'category',
+        data: items.map((item) => item.exercise),
+        axisLabel: { color: colors.onSurfaceVariant, width: 110, overflow: 'truncate' },
+      },
+      series: [
+        {
+          type: 'bar',
+          data: items.map((item) => item.total_sets),
+          itemStyle: { color: colors.primary, borderRadius: [0, 4, 4, 0] },
+          label: { show: true, position: 'right', color: colors.onSurfaceVariant },
+        },
+      ],
+    }
+  }, [frequency])
+
+  const timeRanges = [
+    { id: '3m', label: '3M' },
+    { id: '6m', label: '6M' },
+    { id: '12m', label: '12M' },
+  ]
+
+  // =====================
+  // DESKTOP VERSION
+  // =====================
+  const DesktopView = () => (
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <Sidebar profile={profile} activeItem="analytics" onNavigate={onNavigate} />
+      
+      <main style={styles.desktopMain}>
+        <div style={styles.desktopContent}>
+          <h1 style={styles.title}>Dashboard</h1>
+          <p style={styles.subtitle}>Seguimiento de tu progreso</p>
+
+          <div style={styles.rangeTabs}>
+            {timeRanges.map((range) => (
+              <button key={range.id} onClick={() => setTimeRange(range.id)} style={timeRange === range.id ? styles.rangeTabActive : styles.rangeTab}>
+                {range.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={handleSeedDemoData}
+              disabled={seedingDemo}
+              style={{ ...styles.seedButton, opacity: seedingDemo ? 0.7 : 1 }}
+            >
+              {seedingDemo ? 'Generando demo...' : 'Generar datos demo'}
+            </button>
+          </div>
+
+          {loading && <div style={styles.infoBox}>Cargando métricas del backend...</div>}
+          {error && <div style={styles.errorBox}>{error}</div>}
+
+          {/* Stats Cards */}
+          <div style={styles.statsGrid}>
+            <div style={styles.statCard}>
+              <span style={styles.statNumber}>{stats.totalWorkouts}</span>
+              <span style={styles.statLabel}>Entrenos Totales</span>
             </div>
-            <div className="stats shadow">
-              <div className="stat px-4 py-2">
-                <div className="stat-title text-xs uppercase">Este mes</div>
-                <div className="stat-value text-2xl">{stats.thisMonth}</div>
-              </div>
+            <div style={styles.statCard}>
+              <span style={styles.statNumberSecondary}>{stats.thisMonth}</span>
+              <span style={styles.statLabel}>Este Mes</span>
+            </div>
+            <div style={styles.statCard}>
+              <span style={styles.statNumber}>{stats.totalHours}h</span>
+              <span style={styles.statLabel}>Horas Totales</span>
+            </div>
+            <div style={styles.statCard}>
+              <span style={styles.statNumberSecondary}>{stats.avgDuration}</span>
+              <span style={styles.statLabel}>Duración Promedio</span>
             </div>
           </div>
 
-          {/* Lista de ejercicios */}
-          {exerciseList.length === 0 ? (
-            <div className="text-center py-12 opacity-50">
-              <Dumbbell size={48} className="mx-auto mb-4 opacity-50" />
-              <p>No hay datos de ejercicios aún</p>
-              <p className="text-sm">¡完成 algunos entrenamientos para ver tu progreso!</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {exerciseList.map(exName => {
-                const exHistory = getExerciseHistory(exName)
-                const pr = getPersonalRecord(exName)
-                const lastResult = exHistory[exHistory.length - 1]
-                const prevResult = exHistory.length > 1 ? exHistory[exHistory.length - 2] : null
-                
-                // datos para gráfico (últimos 10)
-                const chartData = exHistory.slice(-10).map(e => ({
-                  date: formatDate(e.date),
-                  reps: e.actual?.reps || 0,
-                  weight: e.actual?.weight || 0,
-                }))
-
-                return (
-                  <div key={exName} className="bg-base-200 rounded-xl p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-black uppercase text-sm">{exName}</h3>
-                      {lastResult?.feeling && (
-                        <span className="text-lg">
-                          {lastResult.feeling === 'easy' ? '😊' : 
-                           lastResult.feeling === 'good' ? '👍' : 
-                           lastResult.feeling === 'hard' ? '😤' : '❌'}
-                        </span>
-                      )}
-                    </div>
-
-                    {/*Gráfico*/}
-                    <SimpleBarChart 
-                      data={chartData} 
-                      labelKey="date" 
-                      valueKey={chartData[0]?.weight > 0 ? 'weight' : 'reps'} 
-                    />
-
-                    {/* Stats */}
-                    <div className="flex justify-between items-end mt-2 text-xs">
-                      <div>
-                        <span className="opacity-50">Último: </span>
-                        <span className="font-bold">
-                          {lastResult?.actual?.reps && `${lastResult.actual.reps} reps`}
-                          {lastResult?.actual?.weight && ` • ${lastResult.actual.weight}kg`}
-                        </span>
-                      </div>
-                      {pr && (
-                        <div className="text-success font-bold">
-                          PR: {pr.actual?.weight}kg
-                        </div>
-                      )}
-                      <TrendIndicator 
-                        current={lastResult?.actual?.weight || lastResult?.actual?.reps}
-                        previous={prevResult?.actual?.weight || prevResult?.actual?.reps}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab Peso corporal */}
-      {activeTab === 'weight' && (
-        <div className="flex-1 overflow-auto">
-          {/* Botón agregar peso */}
-          <button 
-            onClick={() => setShowWeightModal(true)}
-            className="btn btn-primary btn-block mb-4"
-          >
-            <Scale size={18} />
-            Agregar peso corporal
-          </button>
-
-          {/* Latest weight */}
-          {bodyWeights.length > 0 && (
-            <div className="stats shadow mb-4">
-              <div className="stat">
-                <div className="stat-title text-xs uppercase">Última pesa</div>
-                <div className="stat-value text-4xl">{bodyWeights[0].weight} <span className="text-lg">kg</span></div>
-                <div className="stat-desc">{formatDate(bodyWeights[0].date)}</div>
+          <div style={styles.chartsGrid}>
+            <div style={styles.chartCard}>
+              <h3 style={styles.sectionTitle}>Peso corporal</h3>
+              <div style={styles.weightFormRow}>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={newWeight}
+                  onChange={(e) => setNewWeight(e.target.value)}
+                  placeholder="Peso (kg)"
+                  style={styles.weightInput}
+                />
+                <input
+                  type="date"
+                  value={weightDate}
+                  onChange={(e) => setWeightDate(e.target.value)}
+                  style={styles.weightDateInput}
+                />
+                <button type="button" onClick={handleAddWeight} disabled={savingWeight} style={{ ...styles.weightSaveButton, opacity: savingWeight ? 0.7 : 1 }}>
+                  {savingWeight ? 'Guardando...' : 'Guardar'}
+                </button>
               </div>
-            </div>
-          )}
+              <div style={styles.nivoChartLarge}>
+                {weightLineData.length > 0 ? (
+                  <ReactECharts
+                    option={weightChartOption}
+                    style={{ height: '100%', width: '100%' }}
+                    notMerge
+                    lazyUpdate
+                  />
+                ) : (
+                  <span style={styles.emptyText}>Sin registros de peso</span>
+                )}
+              </div>
 
-          {/* Gráfico de peso */}
-          {bodyWeights.length > 1 && (
-            <div className="bg-base-200 rounded-xl p-4">
-              <h3 className="font-bold text-sm mb-2">Evolución del peso</h3>
-              <SimpleBarChart 
-                data={bodyWeights.slice(0, 30).map(w => ({
-                  date: formatDate(w.date),
-                  weight: w.weight,
-                })).reverse()} 
-                labelKey="date" 
-                valueKey="weight"
-                maxValue={Math.max(...bodyWeights.map(w => w.weight)) + 2}
-              />
-            </div>
-          )}
+              {weightChartInsights && (
+                <div style={styles.insightGrid}>
+                  <div style={styles.insightCard}>
+                    <span style={styles.insightLabel}>Último</span>
+                    <span style={styles.insightValue}>{weightChartInsights.latest.toFixed(2)} kg</span>
+                    <span style={styles.insightMeta}>{weightChartInsights.latestDate}</span>
+                  </div>
+                  <div style={styles.insightCard}>
+                    <span style={styles.insightLabel}>Mínimo</span>
+                    <span style={styles.insightValue}>{weightChartInsights.min.toFixed(2)} kg</span>
+                  </div>
+                  <div style={styles.insightCard}>
+                    <span style={styles.insightLabel}>Máximo</span>
+                    <span style={styles.insightValue}>{weightChartInsights.max.toFixed(2)} kg</span>
+                  </div>
+                </div>
+              )}
 
-          {/* Lista de entradas */}
-          {bodyWeights.length === 0 ? (
-            <div className="text-center py-12 opacity-50">
-              <Scale size={48} className="mx-auto mb-4 opacity-50" />
-              <p>No hay datos de peso aún</p>
+              {weightChartStartEnd.start && (
+                <div style={styles.weightChartRangeLabel}>
+                  Mostrando últimos {weightChartHistory.length} registros: {weightChartStartEnd.start} → {weightChartStartEnd.end}
+                </div>
+              )}
+
+              {weightMinMax.zoomMode === 'zoomed_out' && (
+                <div style={styles.weightZoomHint}>
+                  Zoom ajustado automáticamente por variación alta de peso.
+                </div>
+              )}
+
+              {latestWeightEntry && (
+                <div style={styles.latestWeightBadge}>
+                  Último: {latestWeightEntry.weight} kg ({latestWeightEntry.date})
+                </div>
+              )}
+
+              {recentWeightEntries.length > 0 && (
+                <div style={styles.weightList}>
+                  {recentWeightEntries.map((entry, idx) => (
+                    <div key={`${entry.date}-${idx}`} style={styles.weightListItem}>
+                      <span style={styles.weightListDate}>{entry.date}</span>
+                      <span style={styles.weightListValue}>{entry.weight} kg</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="mt-4">
-              <h4 className="font-bold text-xs uppercase opacity-50 mb-2">Historial</h4>
-              <div className="space-y-1">
-                {bodyWeights.slice(0, 10).map((w, i) => (
-                  <div key={i} className="flex justify-between bg-base-200 px-3 py-2 rounded-lg text-sm">
-                    <span>{formatDate(w.date)}</span>
-                    <span className="font-bold">{w.weight} kg</span>
+          </div>
+
+          <div style={styles.chartCard}>
+            <h3 style={styles.sectionTitle}>Adherencia</h3>
+            <div style={styles.heatmapScroll}>
+              <div style={styles.heatmapGrid}>
+                {heatmapColumns.map((week, weekIdx) => (
+                  <div key={`week-${weekIdx}`} style={styles.heatmapWeekCol}>
+                    {week.map((day) => (
+                      <div
+                        key={day.date}
+                        title={day.count == null ? '' : `${day.date} · ${day.count} entreno${day.count === 1 ? '' : 's'}`}
+                        style={getAdherenceCellStyle(day.count)}
+                      />
+                    ))}
                   </div>
                 ))}
               </div>
             </div>
-          )}
-        </div>
-      )}
-
-{/* Modal agregar peso */}
-      {showWeightModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
-          <div className="bg-base-100 p-6 rounded-2xl w-64">
-            <h3 className="font-black text-lg mb-4 text-center">Agregar Peso</h3>
-            <input
-              type="number"
-              step="0.1"
-              value={newWeight}
-              onChange={(e) => setNewWeight(e.target.value)}
-              placeholder="70.5"
-              className="input input-bordered input-lg w-full text-center text-2xl font-black mb-4"
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setShowWeightModal(false)}
-                className="btn btn-ghost flex-1"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleSaveWeight}
-                className="btn btn-primary flex-1"
-              >
-                Guardar
-              </button>
+            <div style={styles.adherenceLegendRow}>
+              <span style={styles.adherenceLegendItem}><span style={{ ...styles.adherenceLegendSwatch, backgroundColor: 'transparent', border: `1px dashed ${colors.surfaceContainerHighest}` }} />No entrenó</span>
+              <span style={styles.adherenceLegendItem}><span style={{ ...styles.adherenceLegendSwatch, backgroundColor: '#7ee787', border: '1px solid rgba(126, 231, 135, 0.65)' }} />Entrenó</span>
+              <span style={styles.adherenceLegendItem}><span style={{ ...styles.adherenceLegendSwatch, backgroundColor: '#1f9d3a', border: '1px solid rgba(31, 157, 58, 0.95)' }} />Entrenó 2+</span>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Botones Export/Import */}
-      <div className="mt-6 pt-4 border-t border-base-300">
-        <div className="flex gap-2">
-          <button 
-            onClick={() => {
-              const data = exportAllData()
-              if (data) {
-                const blob = new Blob([data], { type: 'application/json' })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url
-                a.download = `entreno-backup-${new Date().toISOString().split('T')[0]}.json`
-                a.click()
-              }
-            }}
-            className="btn btn-outline btn-sm flex-1"
-          >
-            <Download size={16} />
-            Exportar
-          </button>
-          <button 
-            onClick={() => setShowDataModal(true)}
-            className="btn btn-outline btn-sm flex-1"
-          >
-            <Upload size={16} />
-            Importar
-          </button>
-        </div>
-        <p className="text-xs opacity-50 text-center mt-2">
-          Comparte datos entre dispositivos
-        </p>
-      </div>
+          <div style={styles.chartCard}>
+            <h3 style={styles.sectionTitle}>Top ejercicios</h3>
+            {frequency.length === 0 ? (
+              <span style={styles.emptyText}>Sin datos suficientes</span>
+            ) : (
+              <div style={styles.nivoChartMedium}>
+                <ReactECharts option={topExercisesOption} style={{ height: '100%', width: '100%' }} notMerge lazyUpdate />
+              </div>
+            )}
+          </div>
 
-      {/* Modal Import */}
-      {showDataModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
-          <div className="bg-base-100 p-4 rounded-2xl m-4 max-h-[80vh] overflow-auto w-80">
-            <h3 className="font-black text-lg mb-2">Importar datos</h3>
-            <p className="text-xs opacity-70 mb-2">Pega el JSON aqui:</p>
-            <textarea
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              className="textarea textarea-bordered w-full h-32 text-xs font-mono"
-              placeholder="Pega el contenido del archivo JSON..."
-            />
-            <div className="flex gap-2 mt-3">
-              <button 
-                onClick={() => {
-                  setShowDataModal(false)
-                  setImportText('')
-                }}
-                className="btn btn-ghost flex-1"
+          <div style={styles.chartCard}>
+            <h3 style={styles.sectionTitle}>Progreso temporal superpuesto (peso/reps/feeling)</h3>
+
+            <div style={styles.exerciseProgressControls}>
+              <select
+                value={selectedExercise}
+                onChange={(e) => setSelectedExercise(e.target.value)}
+                style={styles.exerciseSelect}
               >
-                Cancelar
-              </button>
-              <button 
-                onClick={() => {
-                  if (importAllData(importText)) {
-                    alert('Datos importados!')
-                    window.location.reload()
-                  } else {
-                    alert('Error al importar')
-                  }
-                }}
-                className="btn btn-primary flex-1"
-              >
-                Importar
-              </button>
+                {frequency.map((item) => (
+                  <option key={item.exercise} value={item.exercise}>{item.exercise}</option>
+                ))}
+              </select>
+              <span style={styles.exerciseProgressMeta}>
+                {loadingExerciseProgress ? 'Cargando...' : `${exerciseProgressPoints.length} sets reales`}
+              </span>
             </div>
+
+            <div style={styles.seriesToggleRow}>
+              <button type="button" onClick={() => setProgressSeriesVisibility((prev) => ({ ...prev, weight: !prev.weight }))} style={progressSeriesVisibility.weight ? styles.seriesToggleActive : styles.seriesToggle}>Peso</button>
+              <button type="button" onClick={() => setProgressSeriesVisibility((prev) => ({ ...prev, reps: !prev.reps }))} style={progressSeriesVisibility.reps ? styles.seriesToggleActive : styles.seriesToggle}>Reps</button>
+              <button type="button" onClick={() => setProgressSeriesVisibility((prev) => ({ ...prev, feeling: !prev.feeling }))} style={progressSeriesVisibility.feeling ? styles.seriesToggleActive : styles.seriesToggle}>Feeling</button>
+            </div>
+
+            <div style={styles.nivoChartLarge}>
+              {exerciseTimelineSeries.series.length > 0 ? (
+                <ReactECharts
+                  option={exerciseOverlayOption}
+                  style={{ height: '100%', width: '100%' }}
+                  notMerge
+                  lazyUpdate
+                />
+              ) : (
+                <span style={styles.emptyText}>No hay suficientes datos reales para armar el gráfico temporal</span>
+              )}
+            </div>
+
+            <div style={styles.progressHelpText}>
+              Escalas independientes en el mismo gráfico: Peso (kg), Reps y Feeling.
+            </div>
+
+            {overlaySeriesInsights.length > 0 && (
+              <div style={styles.insightGrid}>
+                {overlaySeriesInsights.map((insight) => (
+                  <div key={insight.id} style={styles.insightCard}>
+                    <span style={styles.insightLabel}>{insight.id}</span>
+                    <span style={styles.insightValue}>{formatOverlayRealValue(insight.kind, insight.latest)}</span>
+                    <span style={styles.insightMeta}>{insight.latestDate}</span>
+                    <span style={styles.insightSubMeta}>
+                      Rango real: {formatOverlayRealValue(insight.kind, insight.min)} → {formatOverlayRealValue(insight.kind, insight.max)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sessions List */}
+            <div style={styles.sessionsList}>
+              <h3 style={styles.sectionTitle}>Sesiones Recientes</h3>
+              {sessionsView.length === 0 && <span style={styles.emptyText}>Sin sesiones registradas</span>}
+              {sessionsView.map((session) => (
+                <div key={session.id} style={styles.sessionItem}>
+                <div style={styles.sessionLeft}>
+                  <Badge label={session.day} variant={session.completed ? 'primary' : 'secondary'} />
+                  <span style={styles.sessionDate}>{session.date}</span>
+                </div>
+                <div style={styles.sessionRight}>
+                  <span style={styles.sessionMeta}>{session.duration} • {session.completed ? 'Completado' : 'Incompleto'}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      )}
+      </main>
     </div>
   )
+
+  // =====================
+  // MOBILE VERSION
+  // =====================
+  const MobileView = () => (
+    <div style={{ minHeight: '100vh', backgroundColor: colors.background, fontFamily: typography.fontFamily.body }}>
+      <header style={styles.mobileHeader}>
+        <span style={styles.mobileTitle}>Dashboard</span>
+        <div style={styles.profileIcon}>
+          <img src={profile?.image || 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=40&h=40&fit=crop&crop=face'} alt="Profile" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+        </div>
+      </header>
+
+        <main style={styles.mobileMain}>
+          <div style={styles.mobileTabs}>
+            {timeRanges.map((range) => (
+              <button key={range.id} onClick={() => setTimeRange(range.id)} style={timeRange === range.id ? styles.mobileTabActive : styles.mobileTab}>
+                {range.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={handleSeedDemoData}
+              disabled={seedingDemo}
+              style={{ ...styles.mobileSeedButton, opacity: seedingDemo ? 0.7 : 1 }}
+            >
+              {seedingDemo ? 'Demo...' : 'Datos demo'}
+            </button>
+          </div>
+
+          {loading && <div style={styles.infoBox}>Cargando métricas del backend...</div>}
+          {error && <div style={styles.errorBox}>{error}</div>}
+
+          {/* Stats */}
+          <div style={styles.mobileStats}>
+          <div style={styles.mobileStatCard}>
+            <span style={styles.mobileStatNumber}>{stats.totalWorkouts}</span>
+            <span style={styles.mobileStatLabel}>Entrenos</span>
+          </div>
+          <div style={styles.mobileStatCard}>
+            <span style={styles.mobileStatNumberSecondary}>{stats.thisMonth}</span>
+            <span style={styles.mobileStatLabel}>Este Mes</span>
+          </div>
+            <div style={styles.mobileStatCard}>
+              <span style={styles.mobileStatNumber}>{stats.totalHours}h</span>
+              <span style={styles.mobileStatLabel}>Horas</span>
+            </div>
+          </div>
+
+         <div style={styles.chartCard}>
+           <h3 style={styles.sectionTitle}>Adherencia</h3>
+           <div style={styles.heatmapScroll}>
+             <div style={styles.heatmapGrid}>
+               {heatmapColumns.map((week, weekIdx) => (
+                 <div key={`mobile-week-${weekIdx}`} style={styles.heatmapWeekCol}>
+                   {week.map((day) => (
+                     <div
+                       key={day.date}
+                       title={day.count == null ? '' : `${day.date} · ${day.count} entreno${day.count === 1 ? '' : 's'}`}
+                       style={getAdherenceCellStyle(day.count)}
+                     />
+                   ))}
+                 </div>
+               ))}
+             </div>
+           </div>
+           <div style={styles.adherenceLegendRow}>
+             <span style={styles.adherenceLegendItem}><span style={{ ...styles.adherenceLegendSwatch, backgroundColor: 'transparent', border: `1px dashed ${colors.surfaceContainerHighest}` }} />No entrenó</span>
+             <span style={styles.adherenceLegendItem}><span style={{ ...styles.adherenceLegendSwatch, backgroundColor: '#7ee787', border: '1px solid rgba(126, 231, 135, 0.65)' }} />Entrenó</span>
+             <span style={styles.adherenceLegendItem}><span style={{ ...styles.adherenceLegendSwatch, backgroundColor: '#1f9d3a', border: '1px solid rgba(31, 157, 58, 0.95)' }} />Entrenó 2+</span>
+           </div>
+         </div>
+
+         <div style={styles.chartCard}>
+           <h3 style={styles.sectionTitle}>Top ejercicios</h3>
+           {frequency.length === 0 ? (
+             <span style={styles.emptyText}>Sin datos suficientes</span>
+           ) : (
+             <div style={styles.nivoChartMedium}>
+               <ReactECharts option={topExercisesOption} style={{ height: '100%', width: '100%' }} notMerge lazyUpdate />
+             </div>
+           )}
+         </div>
+
+         <div style={styles.chartCard}>
+           <h3 style={styles.sectionTitle}>Progreso temporal superpuesto</h3>
+           <div style={styles.exerciseProgressControls}>
+             <select
+               value={selectedExercise}
+               onChange={(e) => setSelectedExercise(e.target.value)}
+               style={styles.exerciseSelect}
+             >
+               {frequency.map((item) => (
+                 <option key={item.exercise} value={item.exercise}>{item.exercise}</option>
+               ))}
+             </select>
+             <span style={styles.exerciseProgressMeta}>
+               {loadingExerciseProgress ? 'Cargando...' : `${exerciseProgressPoints.length} sets reales`}
+             </span>
+           </div>
+
+            <div style={styles.seriesToggleRow}>
+              <button type="button" onClick={() => setProgressSeriesVisibility((prev) => ({ ...prev, weight: !prev.weight }))} style={progressSeriesVisibility.weight ? styles.seriesToggleActive : styles.seriesToggle}>Peso</button>
+              <button type="button" onClick={() => setProgressSeriesVisibility((prev) => ({ ...prev, reps: !prev.reps }))} style={progressSeriesVisibility.reps ? styles.seriesToggleActive : styles.seriesToggle}>Reps</button>
+              <button type="button" onClick={() => setProgressSeriesVisibility((prev) => ({ ...prev, feeling: !prev.feeling }))} style={progressSeriesVisibility.feeling ? styles.seriesToggleActive : styles.seriesToggle}>Feeling</button>
+            </div>
+
+            <div style={styles.nivoChartLarge}>
+              {exerciseTimelineSeries.series.length > 0 ? (
+                <ReactECharts
+                  option={exerciseOverlayOption}
+                  style={{ height: '100%', width: '100%' }}
+                  notMerge
+                  lazyUpdate
+                />
+              ) : (
+                <span style={styles.emptyText}>No hay suficientes datos reales para armar el gráfico temporal</span>
+              )}
+            </div>
+
+            <div style={styles.progressHelpText}>
+              Escalas independientes en el mismo gráfico: Peso (kg), Reps y Feeling.
+            </div>
+
+            {overlaySeriesInsights.length > 0 && (
+              <div style={styles.insightGrid}>
+                {overlaySeriesInsights.map((insight) => (
+                  <div key={insight.id} style={styles.insightCard}>
+                    <span style={styles.insightLabel}>{insight.id}</span>
+                    <span style={styles.insightValue}>{formatOverlayRealValue(insight.kind, insight.latest)}</span>
+                    <span style={styles.insightMeta}>{insight.latestDate}</span>
+                    <span style={styles.insightSubMeta}>
+                      Rango real: {formatOverlayRealValue(insight.kind, insight.min)} → {formatOverlayRealValue(insight.kind, insight.max)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+         </div>
+
+         <div style={styles.chartCard}>
+           <h3 style={styles.sectionTitle}>Peso corporal</h3>
+           <div style={styles.weightFormColumn}>
+             <input
+               type="number"
+               step="0.1"
+               min="0"
+               value={newWeight}
+               onChange={(e) => setNewWeight(e.target.value)}
+               placeholder="Peso (kg)"
+               style={styles.weightInput}
+             />
+             <input
+               type="date"
+               value={weightDate}
+               onChange={(e) => setWeightDate(e.target.value)}
+               style={styles.weightDateInput}
+             />
+             <button type="button" onClick={handleAddWeight} disabled={savingWeight} style={{ ...styles.weightSaveButton, opacity: savingWeight ? 0.7 : 1 }}>
+               {savingWeight ? 'Guardando...' : 'Guardar'}
+             </button>
+           </div>
+
+            <div style={styles.nivoChartMedium}>
+               {weightLineData.length > 0 ? (
+                 <ReactECharts
+                  option={weightChartOption}
+                  style={{ height: '100%', width: '100%' }}
+                  notMerge
+                  lazyUpdate
+                />
+              ) : (
+                <span style={styles.emptyText}>Sin registros de peso</span>
+              )}
+            </div>
+
+            {weightChartInsights && (
+              <div style={styles.insightGrid}>
+                <div style={styles.insightCard}>
+                  <span style={styles.insightLabel}>Último</span>
+                  <span style={styles.insightValue}>{weightChartInsights.latest.toFixed(2)} kg</span>
+                  <span style={styles.insightMeta}>{weightChartInsights.latestDate}</span>
+                </div>
+                <div style={styles.insightCard}>
+                  <span style={styles.insightLabel}>Mínimo</span>
+                  <span style={styles.insightValue}>{weightChartInsights.min.toFixed(2)} kg</span>
+                </div>
+                <div style={styles.insightCard}>
+                  <span style={styles.insightLabel}>Máximo</span>
+                  <span style={styles.insightValue}>{weightChartInsights.max.toFixed(2)} kg</span>
+                </div>
+              </div>
+            )}
+
+            {latestWeightEntry && (
+              <div style={styles.latestWeightBadgeMobile}>
+                Último: {latestWeightEntry.weight} kg ({latestWeightEntry.date})
+              </div>
+            )}
+
+            {recentWeightEntries.length > 0 && (
+              <div style={styles.weightListMobile}>
+                {recentWeightEntries.map((entry, idx) => (
+                  <div key={`mobile-${entry.date}-${idx}`} style={styles.weightListItem}>
+                    <span style={styles.weightListDate}>{entry.date}</span>
+                    <span style={styles.weightListValue}>{entry.weight} kg</span>
+                  </div>
+                ))}
+              </div>
+            )}
+         </div>
+
+        {/* Sessions */}
+         <div style={styles.mobileSessions}>
+          {sessionsView.length === 0 && <span style={styles.emptyText}>Sin sesiones registradas</span>}
+          {sessionsView.map((session) => (
+            <div key={session.id} style={styles.mobileSessionItem}>
+              <div style={styles.mobileSessionLeft}>
+                <span style={styles.mobileDayNumber}>{session.day}</span>
+              </div>
+              <div style={styles.mobileSessionInfo}>
+                <span style={styles.mobileSessionDate}>{session.date}</span>
+                <span style={styles.mobileSessionMeta}>{session.duration} • {session.completed ? 'Completado' : 'Incompleto'}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+
+      <BottomNav activeItem="analytics" onNavigate={onNavigate} />
+    </div>
+  )
+
+  return (
+    <div className="analytics-container">
+      {isDesktop ? DesktopView() : MobileView()}
+    </div>
+  )
+}
+
+const styles = {
+  // Shared
+  title: { fontSize: '3rem', fontFamily: typography.fontFamily.heading, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.02em', lineHeight: 1, marginBottom: '0.5rem' },
+  subtitle: { color: colors.onSurfaceVariant, fontSize: '1rem', marginBottom: '2rem' },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' },
+  statCard: { backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.lg, padding: '1.25rem', textAlign: 'center' },
+  statNumber: { fontSize: '2.5rem', fontFamily: typography.fontFamily.heading, fontWeight: 900, color: colors.primary, display: 'block' },
+  statNumberSecondary: { fontSize: '2.5rem', fontFamily: typography.fontFamily.heading, fontWeight: 900, color: colors.secondary, display: 'block' },
+  statLabel: { fontSize: '0.75rem', color: colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  chartsGrid: { display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1rem' },
+  chartCard: { backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.lg, padding: '1rem', marginBottom: '1rem' },
+  nivoChartLarge: { height: '360px', backgroundColor: colors.surfaceContainerHigh, border: `1px solid ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.md, padding: '0.35rem' },
+  nivoChartMedium: { height: '300px', backgroundColor: colors.surfaceContainerHigh, border: `1px solid ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.md, padding: '0.35rem' },
+  adherenceLegendRow: { marginTop: '0.55rem', display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap' },
+  adherenceLegendItem: { display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.67rem', color: colors.onSurfaceVariant },
+  adherenceLegendSwatch: { width: '12px', height: '12px', borderRadius: '3px', border: '1px solid transparent', display: 'inline-block' },
+  nivoChartSmall: { height: '220px', backgroundColor: colors.surfaceContainerLow, border: `1px solid ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.sm, padding: '0.2rem' },
+  nivoTooltip: { backgroundColor: colors.surfaceContainerHigh, border: `1px solid ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.sm, padding: '0.4rem 0.55rem', fontSize: '0.74rem', color: colors.onSurface },
+  weightChartRangeLabel: { marginTop: '0.55rem', fontSize: '0.68rem', color: colors.onSurfaceVariant },
+  weightZoomHint: { marginTop: '0.2rem', fontSize: '0.65rem', color: colors.secondary, fontWeight: 600 },
+  weightFormRow: { display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.5rem', marginBottom: '0.75rem' },
+  weightFormColumn: { display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem' },
+  weightInput: { backgroundColor: colors.surfaceContainerHigh, border: `1px solid ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.md, padding: '0.55rem 0.7rem', color: colors.onSurface, fontSize: '0.82rem', outline: 'none' },
+  weightDateInput: { backgroundColor: colors.surfaceContainerHigh, border: `1px solid ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.md, padding: '0.55rem 0.7rem', color: colors.onSurface, fontSize: '0.82rem', outline: 'none' },
+  weightSaveButton: { border: 'none', borderRadius: borderRadius.md, backgroundColor: colors.primary, color: colors.onPrimaryFixed, padding: '0.55rem 0.85rem', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' },
+  latestWeightBadge: { marginTop: '0.75rem', fontSize: '0.75rem', color: colors.onSurface, backgroundColor: colors.surfaceContainerHigh, border: `1px solid ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.full, padding: '0.35rem 0.6rem', display: 'inline-block' },
+  latestWeightBadgeMobile: { marginTop: '0.75rem', fontSize: '0.74rem', color: colors.onSurface, backgroundColor: colors.surfaceContainerHigh, border: `1px solid ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.full, padding: '0.35rem 0.6rem', display: 'inline-block' },
+  weightList: { marginTop: '0.75rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' },
+  weightListMobile: { marginTop: '0.75rem', display: 'grid', gridTemplateColumns: '1fr', gap: '0.45rem' },
+  weightListItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceContainerHigh, border: `1px solid ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.md, padding: '0.4rem 0.55rem' },
+  weightListDate: { fontSize: '0.7rem', color: colors.onSurfaceVariant },
+  weightListValue: { fontSize: '0.78rem', color: colors.onSurface, fontWeight: 700 },
+  topExercisesList: { display: 'flex', flexDirection: 'column', gap: '0.5rem' },
+  topExerciseItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.6rem', borderRadius: borderRadius.md, backgroundColor: colors.surfaceContainerHigh },
+  topExerciseName: { fontSize: '0.8rem', color: colors.onSurface },
+  topExerciseCount: { fontSize: '0.75rem', color: colors.onSurfaceVariant, fontWeight: 700 },
+  exerciseProgressControls: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.7rem', marginBottom: '0.75rem', flexWrap: 'wrap' },
+  exerciseSelect: { backgroundColor: colors.surfaceContainerHigh, border: `1px solid ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.md, padding: '0.5rem 0.65rem', color: colors.onSurface, fontSize: '0.78rem', minWidth: '220px', maxWidth: '100%' },
+  exerciseProgressMeta: { fontSize: '0.72rem', color: colors.onSurfaceVariant, fontWeight: 600 },
+  exerciseChartsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' },
+  exerciseMiniChartCard: { backgroundColor: colors.surfaceContainerHigh, border: `1px solid ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.md, padding: '0.65rem', marginBottom: '0.6rem' },
+  exerciseMiniChartTitle: { fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: colors.onSurfaceVariant, marginBottom: '0.45rem', fontWeight: 700 },
+  insightGrid: { marginTop: '0.75rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.5rem' },
+  insightCard: { display: 'flex', flexDirection: 'column', gap: '0.2rem', backgroundColor: colors.surfaceContainerHigh, border: `1px solid ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.md, padding: '0.52rem 0.62rem' },
+  insightLabel: { fontSize: '0.66rem', color: colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 },
+  insightValue: { fontSize: '0.8rem', color: colors.onSurface, fontWeight: 800 },
+  insightMeta: { fontSize: '0.68rem', color: colors.onSurfaceVariant },
+  insightSubMeta: { fontSize: '0.66rem', color: colors.onSurfaceVariant },
+  seriesToggleRow: { display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.55rem' },
+  seriesToggle: { border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.surfaceContainerLow, color: colors.onSurfaceVariant, padding: '0.32rem 0.58rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' },
+  seriesToggleActive: { border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.primary, color: colors.onPrimaryFixed, padding: '0.32rem 0.58rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' },
+  progressHelpText: { marginTop: '0.45rem', fontSize: '0.68rem', color: colors.onSurfaceVariant },
+  heatmapScroll: { overflowX: 'auto', paddingBottom: '0.25rem' },
+  heatmapGrid: { display: 'flex', gap: '0.22rem', minWidth: 'fit-content' },
+  heatmapWeekCol: { display: 'grid', gridTemplateRows: 'repeat(7, 14px)', gap: '0.22rem' },
+  heatCell: { width: '14px', height: '14px', borderRadius: '3px' },
+  heatLegend: { marginTop: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap', justifyContent: 'flex-end' },
+  heatLegendItem: { display: 'inline-flex', alignItems: 'center', gap: '0.25rem' },
+  legendText: { fontSize: '0.65rem', color: colors.onSurfaceVariant },
+  legendCell: { width: '10px', height: '10px', borderRadius: '2px' },
+  emptyText: { fontSize: '0.75rem', color: colors.onSurfaceVariant },
+  infoBox: { backgroundColor: colors.surfaceContainerLow, border: `1px solid ${colors.surfaceContainerHighest}`, color: colors.onSurfaceVariant, borderRadius: borderRadius.md, padding: '0.75rem 0.9rem', marginBottom: '1rem', fontSize: '0.82rem' },
+  errorBox: { backgroundColor: '#3b0f1a', border: '1px solid #772038', color: '#ffb4c8', borderRadius: borderRadius.md, padding: '0.75rem 0.9rem', marginBottom: '1rem', fontSize: '0.82rem' },
+  rangeTabs: { display: 'flex', gap: '0.5rem', marginBottom: '1rem' },
+  rangeTab: { border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.surfaceContainerLow, color: colors.onSurfaceVariant, padding: '0.4rem 0.8rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' },
+  rangeTabActive: { border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.primary, color: colors.onPrimaryFixed, padding: '0.4rem 0.8rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' },
+  seedButton: { border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.secondary, color: colors.onPrimaryFixed, padding: '0.4rem 0.8rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' },
+  sectionTitle: { fontSize: '0.875rem', fontFamily: typography.fontFamily.heading, fontWeight: 700, color: colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' },
+  sessionsList: { marginBottom: '2rem' },
+  sessionItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.md, marginBottom: '0.75rem' },
+  sessionLeft: { display: 'flex', alignItems: 'center', gap: '1rem' },
+  sessionDate: { fontSize: '0.875rem', color: colors.onSurfaceVariant },
+  sessionRight: { display: 'flex', alignItems: 'center' },
+  sessionMeta: { fontSize: '0.75rem', color: colors.onSurfaceVariant },
+
+  // Desktop
+  desktopMain: { marginLeft: '280px', flex: 1, minHeight: '100vh', display: 'flex', justifyContent: 'center', padding: '2rem' },
+  desktopContent: { maxWidth: '900px', width: '100%' },
+
+  // Mobile
+  mobileHeader: { position: 'fixed', top: 0, left: 0, right: 0, height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', backgroundColor: colors.background, borderBottom: `1px solid ${colors.surfaceContainerHighest}`, zIndex: 50 },
+  mobileTitle: { fontFamily: typography.fontFamily.heading, fontWeight: 700, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: colors.onSurface },
+  profileIcon: { width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', border: `2px solid ${colors.surfaceContainerHighest}` },
+  mobileMain: { padding: '80px 1rem 100px' },
+  mobileStats: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' },
+  mobileStatCard: { backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.md, padding: '1rem', textAlign: 'center' },
+  mobileStatNumber: { fontSize: '1.5rem', fontFamily: typography.fontFamily.heading, fontWeight: 900, color: colors.primary, display: 'block' },
+  mobileStatNumberSecondary: { fontSize: '1.5rem', fontFamily: typography.fontFamily.heading, fontWeight: 900, color: colors.secondary, display: 'block' },
+  mobileStatLabel: { fontSize: '0.625rem', color: colors.onSurfaceVariant, textTransform: 'uppercase' },
+  mobileTabs: { display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto' },
+  mobileTab: { padding: '0.5rem 1rem', background: 'none', border: 'none', color: colors.onSurfaceVariant, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', borderRadius: borderRadius.full, backgroundColor: colors.surfaceContainerLow },
+  mobileTabActive: { padding: '0.5rem 1rem', background: colors.primary, border: 'none', color: colors.onPrimaryFixed, fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', borderRadius: borderRadius.full },
+  mobileSeedButton: { padding: '0.5rem 1rem', background: colors.secondary, border: 'none', color: colors.onPrimaryFixed, fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', borderRadius: borderRadius.full },
+  mobileSessions: { display: 'flex', flexDirection: 'column', gap: '0.75rem' },
+  mobileSessionItem: { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.md },
+  mobileSessionLeft: { minWidth: '60px' },
+  mobileDayNumber: { fontSize: '1rem', fontFamily: typography.fontFamily.heading, fontWeight: 700, color: colors.primary },
+  mobileSessionInfo: { flex: 1 },
+  mobileSessionDate: { fontSize: '0.875rem', fontWeight: 600, display: 'block' },
+  mobileSessionMeta: { fontSize: '0.75rem', color: colors.onSurfaceVariant },
 }
 
 export default Analytics

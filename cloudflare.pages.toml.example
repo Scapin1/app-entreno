@@ -1,0 +1,11 @@
+name = "app-entreno-frontend"
+compatibility_date = "2026-04-18"
+
+[build]
+command = "npm run build"
+cwd = "."
+output_dir = "dist"
+
+[vars]
+# Set this in Cloudflare Pages project env vars (Production + Preview)
+VITE_API_URL = "https://your-backend-space.hf.space/api"
