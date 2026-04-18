@@ -263,6 +263,7 @@ const SessionController = ({ day, onBack }) => {
           isCircuitBlock={currentBlock.type === 'circuit'}
           dayId={dayId}
           lastResult={getLastResult(currentExercise.name)}
+          showFullFeedback={blockIndex === 1} // Solo fase principal (índice 1)
         />
       </div>
 

@@ -16,11 +16,12 @@ const ExerciseFeedback = ({
   onSkip,
   defaultReps = null,
   defaultWeight = null,
+  onlyFeeling = false,
 }) => {
   const [reps, setReps] = useState(defaultReps || exercise.reps || exercise.value || 0)
   const [weight, setWeight] = useState(defaultWeight || '')
   const [feeling, setFeeling] = useState(null)
-  const [showFeeling, setShowFeeling] = useState(false)
+  const [showFeeling, setShowFeeling] = useState(onlyFeeling) // Si solo feeling, mostrar directamente
 
   const hasWeight = exercise.type === 'sets' && !exercise.name.toLowerCase().includes('paloff')
   const hasReps = exercise.type === 'sets' || exercise.type === 'reps'
@@ -38,7 +39,10 @@ const ExerciseFeedback = ({
   }
 
   const handleContinueClick = () => {
-    if (!showFeeling) {
+    if (onlyFeeling && !feeling) {
+      // Solo feeling - esperar selección
+      return
+    } else if (!showFeeling) {
       setShowFeeling(true)
     } else {
       handleSubmit()
@@ -57,23 +61,25 @@ const ExerciseFeedback = ({
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-black uppercase tracking-tight">
-            {exercise.name}
+            {onlyFeeling ? '¿Cómo te sentiste?' : exercise.name}
           </h3>
           <button onClick={onSkip} className="btn btn-ghost btn-sm btn-circle">
             <X size={20} />
           </button>
         </div>
 
-        {/* Set actual */}
-        <div className="text-center mb-6">
-          <span className="badge badge-lg badge-primary font-black uppercase">
-            Serie {currentSet} {exercise.sets > 1 ? `de ${exercise.sets}` : ''}
-          </span>
-        </div>
+        {/* Set actual - solo si no es onlyFeeling */}
+        {!onlyFeeling && (
+          <div className="text-center mb-6">
+            <span className="badge badge-lg badge-primary font-black uppercase">
+              Serie {currentSet} {exercise.sets > 1 ? `de ${exercise.sets}` : ''}
+            </span>
+          </div>
+        )}
 
-        {/* Inputs de reps y peso */}
+        {/* Inputs de reps y peso - solo si no es onlyFeeling */}
         <div className="space-y-4 mb-6">
-          {hasReps && (
+          {!onlyFeeling && hasReps && (
             <div className="form-control">
               <label className="label">
                 <span className="label-text font-bold uppercase text-xs">Repeticiones</span>

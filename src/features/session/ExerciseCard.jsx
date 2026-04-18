@@ -12,6 +12,7 @@ const ExerciseCard = ({
   isCircuitBlock = false,
   dayId = null,
   lastResult = null,
+  showFullFeedback = true,
 }) => {
   const [isTimerRunning, setIsTimerRunning] = useState(false)
   const [timerKey, setTimerKey] = useState(0)
@@ -176,9 +177,10 @@ const ExerciseCard = ({
           currentSet={currentSet}
           defaultReps={lastResult?.actual?.reps || exercise.reps || exercise.value}
           defaultWeight={lastResult?.actual?.weight}
+          onlyFeeling={!showFullFeedback}
           onContinue={(feedbackData) => {
             // Guardar en storage
-            if (dayId && feedbackData?.actual) {
+            if (dayId && (feedbackData?.actual || feedbackData?.feeling)) {
               saveExerciseResult(dayId, exercise.name, currentSet, feedbackData.actual, feedbackData.feeling)
             }
             setShowFeedback(false)
