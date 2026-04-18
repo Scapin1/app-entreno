@@ -164,7 +164,15 @@ const ExerciseCard = ({
       {/* Botón de Siguiente */}
       <div className="mt-12 w-full">
         <button 
-          onClick={() => setShowFeedback(true)}
+          onClick={() => {
+            if (showFullFeedback) {
+              // Fase principal - mostrar feedback
+              setShowFeedback(true)
+            } else {
+              // Calentamiento/vuelta a la calma - pasar directo
+              onNext()
+            }
+          }}
           className="btn btn-primary btn-lg w-full rounded-2xl gap-3 text-xl font-black italic uppercase tracking-tighter"
         >
           {isCircuitBlock ? 'Siguiente Ejercicio' : (exercise.sets > 1 && currentSet < exercise.sets ? 'Siguiente Serie' : 'Siguiente')}
@@ -172,14 +180,14 @@ const ExerciseCard = ({
         </button>
       </div>
 
-      {/* Modal de Feedback */}
-      {showFeedback && (
+      {/* Modal de Feedback - solo en fase principal */}
+      {showFeedback && showFullFeedback && (
         <ExerciseFeedback
           exercise={exercise}
           currentSet={currentSet}
           defaultReps={lastResult?.actual?.reps || exercise.reps || exercise.value}
           defaultWeight={lastResult?.actual?.weight}
-          onlyFeeling={!showFullFeedback}
+          onlyFeeling={false}
           onContinue={(feedbackData) => {
             // Calcular duración del ejercicio
             const duration = startTimeRef.current ? Math.round((Date.now() - startTimeRef.current) / 1000) : null
