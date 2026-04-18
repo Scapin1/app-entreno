@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
-import { TrendingUp, TrendingDown, Minus, Scale, Calendar, Activity, Dumbbell, Trash2 } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, Scale, Calendar, Activity, Dumbbell, Trash2, Download, Upload } from 'lucide-react'
 import planData from '../../data/plan.json'
-import { getHistory, getBodyWeight, saveBodyWeight, getExerciseHistory, getPersonalRecord, deleteSession } from '../../utils/storage'
+import { getHistory, getBodyWeight, saveBodyWeight, getExerciseHistory, getPersonalRecord, deleteSession, exportAllData, importAllData } from '../../utils/storage'
 
 // Helper para formatear fecha
 const formatDate = (dateStr) => {
@@ -55,6 +55,8 @@ const Analytics = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState('sessions')
   const [showWeightModal, setShowWeightModal] = useState(false)
   const [newWeight, setNewWeight] = useState('')
+  const [showDataModal, setShowDataModal] = useState(false)
+  const [importText, setImportText] = useState('')
 
   const history = useMemo(() => getHistory(), [])
   const bodyWeights = useMemo(() => getBodyWeight(), [])
@@ -340,7 +342,7 @@ const Analytics = ({ onBack }) => {
         </div>
       )}
 
-      {/* Modal agregar peso */}
+{/* Modal agregar peso */}
       {showWeightModal && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
           <div className="bg-base-100 p-6 rounded-2xl w-64">
@@ -366,6 +368,79 @@ const Analytics = ({ onBack }) => {
                 className="btn btn-primary flex-1"
               >
                 Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Botones Export/Import */}
+      <div className="mt-6 pt-4 border-t border-base-300">
+        <div className="flex gap-2">
+          <button 
+            onClick={() => {
+              const data = exportAllData()
+              if (data) {
+                const blob = new Blob([data], { type: 'application/json' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `entreno-backup-${new Date().toISOString().split('T')[0]}.json`
+                a.click()
+              }
+            }}
+            className="btn btn-outline btn-sm flex-1"
+          >
+            <Download size={16} />
+            Exportar
+          </button>
+          <button 
+            onClick={() => setShowDataModal(true)}
+            className="btn btn-outline btn-sm flex-1"
+          >
+            <Upload size={16} />
+            Importar
+          </button>
+        </div>
+        <p className="text-xs opacity-50 text-center mt-2">
+          Comparte datos entre dispositivos
+        </p>
+      </div>
+
+      {/* Modal Import */}
+      {showDataModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
+          <div className="bg-base-100 p-4 rounded-2xl m-4 max-h-[80vh] overflow-auto w-80">
+            <h3 className="font-black text-lg mb-2">Importar datos</h3>
+            <p className="text-xs opacity-70 mb-2">Pega el JSON aqui:</p>
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              className="textarea textarea-bordered w-full h-32 text-xs font-mono"
+              placeholder="Pega el contenido del archivo JSON..."
+            />
+            <div className="flex gap-2 mt-3">
+              <button 
+                onClick={() => {
+                  setShowDataModal(false)
+                  setImportText('')
+                }}
+                className="btn btn-ghost flex-1"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => {
+                  if (importAllData(importText)) {
+                    alert('Datos importados!')
+                    window.location.reload()
+                  } else {
+                    alert('Error al importar')
+                  }
+                }}
+                className="btn btn-primary flex-1"
+              >
+                Importar
               </button>
             </div>
           </div>

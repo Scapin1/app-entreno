@@ -29,6 +29,39 @@ export const deleteSession = (timestamp) => {
   }
 }
 
+// ==================== EXPORT/IMPORT ====================
+export const exportAllData = () => {
+  try {
+    const history = getHistory()
+    const bodyWeight = getBodyWeight()
+    const data = {
+      history,
+      bodyWeight,
+      exportedAt: new Date().toISOString(),
+    }
+    return JSON.stringify(data, null, 2)
+  } catch (e) {
+    console.error('Error exporting data:', e)
+    return null
+  }
+}
+
+export const importAllData = (jsonString) => {
+  try {
+    const data = JSON.parse(jsonString)
+    if (data.history) {
+      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(data.history))
+    }
+    if (data.bodyWeight) {
+      localStorage.setItem(STORAGE_KEYS.BODY_WEIGHT, JSON.stringify(data.bodyWeight))
+    }
+    return true
+  } catch (e) {
+    console.error('Error importing data:', e)
+    return false
+  }
+}
+
 export const saveWorkoutSession = (session) => {
   try {
     const history = getHistory()
