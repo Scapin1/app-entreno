@@ -2,25 +2,30 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 
 const PREP_TIME = 5
 
-// ==================== SONIDOS ====================
+// ==================== SONIDOS TIPO CAMPANA DE BOXEO ====================
 const playWarningSound = () => {
-  // Sound when 10 seconds left - 3 beeps rapidos
+  // Sound when 10 seconds left - like boxing bell but shorter
   try {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)()
     const now = audioContext.currentTime
     
-    // 3 beeps rapidos
-    for (let i = 0; i < 3; i++) {
+    // Campana grave - 2 toques rapidos
+    for (let i = 0; i < 2; i++) {
       const osc = audioContext.createOscillator()
       const gain = audioContext.createGain()
       osc.connect(gain)
       gain.connect(audioContext.destination)
-      osc.frequency.value = 660
-      osc.type = 'square'
-      gain.gain.setValueAtTime(0.2, now + i * 0.15)
-      gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.1)
-      osc.start(now + i * 0.15)
-      osc.stop(now + i * 0.15 + 0.1)
+      
+      // Frecuencia de campana (grave y metallico)
+      osc.frequency.value = 440
+      osc.type = 'sine'
+      
+      // Envolvente de campana
+      gain.gain.setValueAtTime(0.6, now + i * 0.25)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.25 + 0.2)
+      
+      osc.start(now + i * 0.25)
+      osc.stop(now + i * 0.25 + 0.25)
     }
   } catch (e) {
     console.error('Audio error:', e)
@@ -28,39 +33,43 @@ const playWarningSound = () => {
 }
 
 const playEndSound = () => {
-  // Sound when timer finishes - 2 long beeps
+  // Sound when timer finishes - como campana de boxeo
   try {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)()
     const now = audioContext.currentTime
     
-    // Primer beep largo
-    const osc1 = audioContext.createOscillator()
-    const gain1 = audioContext.createGain()
-    osc1.connect(gain1)
-    gain1.connect(audioContext.destination)
-    osc1.frequency.value = 880
-    osc1.type = 'sine'
-    gain1.gain.setValueAtTime(0.5, now)
-    gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.5)
-    osc1.start(now)
-    osc1.stop(now + 0.5)
+    // Campana de boxeo larga y resonante
+    const osc = audioContext.createOscillator()
+    const gain = audioContext.createGain()
+    osc.connect(gain)
+    gain.connect(audioContext.destination)
     
-    // Segundo beep mas largo
+    // Frecuencia grave tipo campana
+    osc.frequency.value = 440
+    osc.type = 'sine'
+    
+    // Envolvente larga de campana
+    gain.gain.setValueAtTime(0.7, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2)
+    
+    osc.start(now)
+    osc.stop(now + 1.5)
+    
+    // Segundo tono harmonico para que suene mas a campana
     const osc2 = audioContext.createOscillator()
     const gain2 = audioContext.createGain()
     osc2.connect(gain2)
     gain2.connect(audioContext.destination)
-    osc2.frequency.value = 1100
+    osc2.frequency.value = 880 // Octava superior
     osc2.type = 'sine'
-    gain2.gain.setValueAtTime(0.5, now + 0.3)
-    gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.3 + 0.8)
-    osc2.start(now + 0.3)
-    osc2.stop(now + 0.3 + 0.8)
+    gain2.gain.setValueAtTime(0.3, now)
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.8)
+    osc2.start(now)
+    osc2.stop(now + 1.0)
     
-    // Vibracion
+    // Vibracion mas fuerte
     if (navigator.vibrate) {
-      navigator.vibrate(200)
-      setTimeout(() => navigator.vibrate(200), 300)
+      navigator.vibrate([300, 200, 300])
     }
   } catch (e) {
     console.error('Audio error:', e)
