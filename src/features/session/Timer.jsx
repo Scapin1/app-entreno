@@ -2,61 +2,65 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 
 const PREP_TIME = 5
 
-// ==================== AUDIO UTILS ====================
-const createOscillator = (freq, type = 'sine', duration = 0.1, volume = 0.3) => {
+// ==================== SONIDOS ====================
+const playWarningSound = () => {
+  // Sound when 10 seconds left - 3 beeps rapidos
   try {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-    const oscillator = audioContext.createOscillator()
-    const gainNode = audioContext.createGain()
+    const now = audioContext.currentTime
     
-    oscillator.connect(gainNode)
-    gainNode.connect(audioContext.destination)
-    
-    oscillator.frequency.value = freq
-    oscillator.type = type
-    gainNode.gain.setValueAtTime(volume, audioContext.currentTime)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration)
-    
-    oscillator.start(audioContext.currentTime)
-    oscillator.stop(audioContext.currentTime + duration)
+    // 3 beeps rapidos
+    for (let i = 0; i < 3; i++) {
+      const osc = audioContext.createOscillator()
+      const gain = audioContext.createGain()
+      osc.connect(gain)
+      gain.connect(audioContext.destination)
+      osc.frequency.value = 660
+      osc.type = 'square'
+      gain.gain.setValueAtTime(0.2, now + i * 0.15)
+      gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.1)
+      osc.start(now + i * 0.15)
+      osc.stop(now + i * 0.15 + 0.1)
+    }
   } catch (e) {
     console.error('Audio error:', e)
   }
 }
 
-const playTick = () => createOscillator(440, 'square', 0.05, 0.15)
-
 const playEndSound = () => {
+  // Sound when timer finishes - 2 long beeps
   try {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+    const now = audioContext.currentTime
     
-    // Primer beep
+    // Primer beep largo
     const osc1 = audioContext.createOscillator()
     const gain1 = audioContext.createGain()
     osc1.connect(gain1)
     gain1.connect(audioContext.destination)
     osc1.frequency.value = 880
-    gain1.gain.setValueAtTime(0.5, audioContext.currentTime)
-    gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
-    osc1.start(audioContext.currentTime)
-    osc1.stop(audioContext.currentTime + 0.5)
+    osc1.type = 'sine'
+    gain1.gain.setValueAtTime(0.5, now)
+    gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.5)
+    osc1.start(now)
+    osc1.stop(now + 0.5)
     
-    // Segundo beep
-    setTimeout(() => {
-      const osc2 = audioContext.createOscillator()
-      const gain2 = audioContext.createGain()
-      osc2.connect(gain2)
-      gain2.connect(audioContext.destination)
-      osc2.frequency.value = 1200
-      gain2.gain.setValueAtTime(0.5, audioContext.currentTime)
-      gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8)
-      osc2.start(audioContext.currentTime)
-      osc2.stop(audioContext.currentTime + 0.8)
-    }, 250)
+    // Segundo beep mas largo
+    const osc2 = audioContext.createOscillator()
+    const gain2 = audioContext.createGain()
+    osc2.connect(gain2)
+    gain2.connect(audioContext.destination)
+    osc2.frequency.value = 1100
+    osc2.type = 'sine'
+    gain2.gain.setValueAtTime(0.5, now + 0.3)
+    gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.3 + 0.8)
+    osc2.start(now + 0.3)
+    osc2.stop(now + 0.3 + 0.8)
     
+    // Vibracion
     if (navigator.vibrate) {
-      navigator.vibrate(300)
-      setTimeout(() => navigator.vibrate(300), 400)
+      navigator.vibrate(200)
+      setTimeout(() => navigator.vibrate(200), 300)
     }
   } catch (e) {
     console.error('Audio error:', e)
@@ -72,19 +76,14 @@ const Timer = ({
   withPrep = false,
   resetKey = 0,
 }) => {
-  // Usar key de reset como dependency key también
   const [key, setKey] = useState(resetKey)
-  
-  // Estados base
   const [timeLeft, setTimeLeft] = useState(seconds)
   const [prepTimeLeft, setPrepTimeLeft] = useState(PREP_TIME)
-  const [soundPlayed, setSoundPlayed] = useState(false)
-  
-  // Determinar fase actual
+  const [soundPlayed10, setSoundPlayed10] = useState(false)
+  const [soundPlayedEnd, setSoundPlayedEnd] = useState(false)
   const [isInPrep, setIsInPrep] = useState(withPrep && (autoStart || initialIsRunning))
   const [isRunningState, setIsRunningState] = useState(initialIsRunning || autoStart)
   
-  // Refs
   const startTimeRef = useRef(null)
   const animationFrameRef = useRef(null)
   const onCompleteRef = useRef(onComplete)
@@ -94,12 +93,13 @@ const Timer = ({
     onCompleteRef.current = onComplete
   }, [onComplete])
 
-  // Reset completo cuando cambia resetKey
+  // Reset completo
   useEffect(() => {
     setKey(resetKey)
     setTimeLeft(seconds)
     setPrepTimeLeft(PREP_TIME)
-    setSoundPlayed(false)
+    setSoundPlayed10(false)
+    setSoundPlayedEnd(false)
     setIsInPrep(withPrep && (autoStart || initialIsRunning))
     setIsRunningState(initialIsRunning || autoStart)
     startTimeRef.current = null
@@ -112,48 +112,42 @@ const Timer = ({
     const now = Date.now()
     
     if (isInPrep) {
-      // Fase de preparación
-      if (startTimeRef.current === null) {
-        startTimeRef.current = now
-      }
+      if (startTimeRef.current === null) startTimeRef.current = now
       
       const elapsed = now - startTimeRef.current
       const remaining = Math.max(0, PREP_TIME - Math.floor(elapsed / 1000))
       
       if (remaining !== prepTimeLeft) {
         setPrepTimeLeft(remaining)
-        if (lastSecondRef.current !== remaining) {
-          playTick()
-          lastSecondRef.current = remaining
-        }
+        lastSecondRef.current = remaining
       }
       
       if (remaining <= 0) {
-        // Fin de prep - ahora timer principal
         setIsInPrep(false)
-        startTimeRef.current = now // Reiniciar para timer principal
-      }
-    } else {
-      // Timer principal
-      if (startTimeRef.current === null) {
         startTimeRef.current = now
       }
+    } else {
+      if (startTimeRef.current === null) startTimeRef.current = now
       
       const elapsed = now - startTimeRef.current
       const remaining = Math.max(0, seconds - Math.floor(elapsed / 1000))
       
       if (remaining !== timeLeft) {
         setTimeLeft(remaining)
-        if (lastSecondRef.current !== remaining) {
-          playTick()
-          lastSecondRef.current = remaining
+        
+        // Sonido cuando faltan 10 segundos
+        if (remaining <= 10 && !soundPlayed10) {
+          playWarningSound()
+          setSoundPlayed10(true)
         }
+        
+        lastSecondRef.current = remaining
       }
       
       if (remaining <= 0) {
-        if (!soundPlayed) {
+        if (!soundPlayedEnd) {
           playEndSound()
-          setSoundPlayed(true)
+          setSoundPlayedEnd(true)
         }
         if (onCompleteRef.current) {
           onCompleteRef.current()
@@ -163,9 +157,9 @@ const Timer = ({
     }
     
     animationFrameRef.current = requestAnimationFrame(updateTimer)
-  }, [isRunningState, isInPrep, timeLeft, prepTimeLeft, seconds, soundPlayed])
+  }, [isRunningState, isInPrep, timeLeft, prepTimeLeft, seconds, soundPlayed10, soundPlayedEnd])
 
-  // Iniciar loop cuando está corriendo
+  // Iniciar loop
   useEffect(() => {
     if (isRunningState && (isInPrep || timeLeft > 0)) {
       animationFrameRef.current = requestAnimationFrame(updateTimer)
