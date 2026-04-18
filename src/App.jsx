@@ -12,13 +12,21 @@ function App() {
   const [selectedDay, setSelectedDay] = useState(null)
   const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(false)
   const [savedSession, setSavedSession] = useState(null)
+  const [recoveryState, setRecoveryState] = useState(null)
 
   // Check for recovery session on mount
   useEffect(() => {
     const saved = getCurrentSession()
     if (saved && saved.dayId) {
-      setSavedSession(saved)
-      setShowRecoveryPrompt(true)
+      // Verificar si no está muy viejo (más de 2 horas)
+      const twoHours = 2 * 60 * 60 * 1000
+      if (Date.now() - saved.timestamp < twoHours) {
+        setSavedSession(saved)
+        setRecoveryState(saved)
+        setShowRecoveryPrompt(true)
+      } else {
+        clearCurrentSession()
+      }
     }
   }, [])
 
@@ -46,6 +54,7 @@ function App() {
     const day = planData.days.find(d => d.id === savedSession.dayId)
     if (day) {
       setSelectedDay(day)
+      setRecoveryState(savedSession)
       setScreen('session')
     }
     setShowRecoveryPrompt(false)
@@ -92,7 +101,8 @@ function App() {
         {screen === 'session' && (
           <SessionController 
             day={selectedDay} 
-            onBack={handleGoBack} 
+            onBack={handleGoBack}
+            recoveryState={recoveryState}
           />
         )}
 

@@ -20,8 +20,8 @@ const playWarningSound = () => {
       osc.frequency.value = 440
       osc.type = 'sine'
       
-      // Envolvente de campana
-      gain.gain.setValueAtTime(0.6, now + i * 0.25)
+      // Envolvente de campana - MAS FUERTE
+      gain.gain.setValueAtTime(0.8, now + i * 0.25)
       gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.25 + 0.2)
       
       osc.start(now + i * 0.25)
@@ -48,21 +48,21 @@ const playEndSound = () => {
     osc.frequency.value = 440
     osc.type = 'sine'
     
-    // Envolvente larga de campana
-    gain.gain.setValueAtTime(0.7, now)
+    // Envolvente larga de campana - MAS FUERTE
+    gain.gain.setValueAtTime(0.9, now)
     gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2)
     
     osc.start(now)
     osc.stop(now + 1.5)
     
-    // Segundo tono harmonico para que suene mas a campana
+    // Segundo tono harmonico para que suene mas a campana - MAS FUERTE
     const osc2 = audioContext.createOscillator()
     const gain2 = audioContext.createGain()
     osc2.connect(gain2)
     gain2.connect(audioContext.destination)
     osc2.frequency.value = 880 // Octava superior
     osc2.type = 'sine'
-    gain2.gain.setValueAtTime(0.3, now)
+    gain2.gain.setValueAtTime(0.5, now)
     gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.8)
     osc2.start(now)
     osc2.stop(now + 1.0)

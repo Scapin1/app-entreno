@@ -3,9 +3,9 @@ import { ChevronLeft, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import Timer from './Timer';
 import ExerciseCard from './ExerciseCard';
 import BlockSummary from './BlockSummary';
-import { saveCurrentSession, getCurrentSession, clearCurrentSession, getHistory } from '../../utils/storage';
+import { saveCurrentSession, clearCurrentSession, getHistory } from '../../utils/storage';
 
-const SessionController = ({ day, onBack }) => {
+const SessionController = ({ day, onBack, recoveryState = null }) => {
   const dayId = day.id
   
   const [blockIndex, setBlockIndex] = useState(0)
@@ -34,22 +34,17 @@ const SessionController = ({ day, onBack }) => {
     saveCurrentSession(stateToSave)
   }, [blockIndex, exerciseIndex, currentSet, isResting, restSeconds, dayId])
 
-  // Recover al iniciar si hay estado guardado
+  // Recover al iniciar si viene estado recovery
   useEffect(() => {
-    const saved = getCurrentSession()
-    if (saved && saved.dayId === dayId) {
-      // Verificar si no está muy viejo (más de 2 horas)
-      const twoHours = 2 * 60 * 60 * 1000
-      if (Date.now() - saved.timestamp < twoHours) {
-        setBlockIndex(saved.blockIndex || 0)
-        setExerciseIndex(saved.exerciseIndex || 0)
-        setCurrentSet(saved.currentSet || 1)
-        setIsResting(saved.isResting || false)
-        setRestSeconds(saved.restSeconds || 0)
-        setIsRecoveryMode(true)
-      }
+    if (recoveryState && recoveryState.dayId === dayId) {
+      setBlockIndex(recoveryState.blockIndex || 0)
+      setExerciseIndex(recoveryState.exerciseIndex || 0)
+      setCurrentSet(recoveryState.currentSet || 1)
+      setIsResting(recoveryState.isResting || false)
+      setRestSeconds(recoveryState.restSeconds || 0)
+      setIsRecoveryMode(true)
     }
-  }, [dayId])
+  }, [dayId, recoveryState])
 
   // Clean up al terminar
   const handleSessionComplete = () => {
