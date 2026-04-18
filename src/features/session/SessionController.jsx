@@ -3,7 +3,7 @@ import { ChevronLeft, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import Timer from './Timer';
 import ExerciseCard from './ExerciseCard';
 import BlockSummary from './BlockSummary';
-import { saveCurrentSession, clearCurrentSession, getHistory } from '../../utils/storage';
+import { saveCurrentSession, clearCurrentSession, getHistory, exportAllData } from '../../utils/storage';
 
 const SessionController = ({ day, onBack, recoveryState = null }) => {
   const dayId = day.id
@@ -49,6 +49,16 @@ const SessionController = ({ day, onBack, recoveryState = null }) => {
   // Clean up al terminar
   const handleSessionComplete = () => {
     clearCurrentSession()
+    // Auto-guardar backup
+    const data = exportAllData()
+    if (data) {
+      const blob = new Blob([data], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `entreno-backup-${new Date().toISOString().split('T')[0]}.json`
+      a.click()
+    }
     onBack()
   }
 
