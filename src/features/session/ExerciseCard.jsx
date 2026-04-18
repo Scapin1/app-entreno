@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Play, Square, FastForward, Check } from 'lucide-react'
 import Timer from './Timer'
 import ExerciseFeedback from './ExerciseFeedback'
@@ -17,11 +17,13 @@ const ExerciseCard = ({
   const [isTimerRunning, setIsTimerRunning] = useState(false)
   const [timerKey, setTimerKey] = useState(0)
   const [showFeedback, setShowFeedback] = useState(false)
+  const startTimeRef = useRef(null) // Timestamp cuando entra al ejercicio
 
   // Resetear el timer cuando cambia el ejercicio
   useEffect(() => {
     setIsTimerRunning(false)
     setTimerKey(prev => prev + 1)
+    startTimeRef.current = Date.now() // Iniciar registro de tiempo
   }, [exercise])
 
   const handleTimerComplete = () => {
@@ -179,9 +181,12 @@ const ExerciseCard = ({
           defaultWeight={lastResult?.actual?.weight}
           onlyFeeling={!showFullFeedback}
           onContinue={(feedbackData) => {
+            // Calcular duración del ejercicio
+            const duration = startTimeRef.current ? Math.round((Date.now() - startTimeRef.current) / 1000) : null
+            
             // Guardar en storage
             if (dayId && (feedbackData?.actual || feedbackData?.feeling)) {
-              saveExerciseResult(dayId, exercise.name, currentSet, feedbackData.actual, feedbackData.feeling)
+              saveExerciseResult(dayId, exercise.name, currentSet, feedbackData.actual, feedbackData.feeling, duration)
             }
             setShowFeedback(false)
             onNext()

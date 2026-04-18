@@ -35,7 +35,7 @@ export const saveWorkoutSession = (session) => {
   }
 }
 
-export const saveExerciseResult = (dayId, exerciseName, setNumber, actualData, feeling) => {
+export const saveExerciseResult = (dayId, exerciseName, setNumber, actualData, feeling, duration = null) => {
   try {
     const history = getHistory()
     const today = new Date().toISOString().split('T')[0]
@@ -50,6 +50,7 @@ export const saveExerciseResult = (dayId, exerciseName, setNumber, actualData, f
         date: today,
         timestamp: Date.now(),
         exercises: [],
+        totalDuration: 0,
       }
       history.unshift(todaySession)
     }
@@ -64,6 +65,7 @@ export const saveExerciseResult = (dayId, exerciseName, setNumber, actualData, f
       set: setNumber,
       actual: actualData,
       feeling,
+      duration, // duración en segundos
       timestamp: Date.now(),
     }
     
@@ -72,6 +74,10 @@ export const saveExerciseResult = (dayId, exerciseName, setNumber, actualData, f
     } else {
       todaySession.exercises.push(exerciseResult)
     }
+    
+    // Calcular duración total de la sesión
+    const totalDuration = todaySession.exercises.reduce((acc, ex) => acc + (ex.duration || 0), 0)
+    todaySession.totalDuration = totalDuration
     
     localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history))
     return exerciseResult

@@ -52,7 +52,7 @@ const TrendIndicator = ({ current, previous }) => {
 
 // Screen de Analytics
 const Analytics = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState('exercises')
+  const [activeTab, setActiveTab] = useState('sessions')
   const [showWeightModal, setShowWeightModal] = useState(false)
   const [newWeight, setNewWeight] = useState('')
 
@@ -103,6 +103,13 @@ const Analytics = ({ onBack }) => {
       {/* Tabs */}
       <div className="tabs tabs-boxed mb-4">
         <button 
+          className={`tab flex-1 ${activeTab === 'sessions' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('sessions')}
+        >
+          <Calendar size={16} />
+          <span className="ml-1">Sesiones</span>
+        </button>
+        <button 
           className={`tab flex-1 ${activeTab === 'exercises' ? 'tab-active' : ''}`}
           onClick={() => setActiveTab('exercises')}
         >
@@ -119,6 +126,60 @@ const Analytics = ({ onBack }) => {
       </div>
 
       {/* Contenido según tab */}
+      {activeTab === 'sessions' && (
+        <div className="flex-1 overflow-auto">
+          <h3 className="font-bold text-sm mb-3">Últimas sesiones</h3>
+          {history.length === 0 ? (
+            <div className="text-center py-12 opacity-50">
+              <Calendar size={48} className="mx-auto mb-4 opacity-50" />
+              <p>No hay sesiones aún</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {history.slice(0, 20).map((session, i) => {
+                const duration = session.totalDuration || session.exercises?.reduce((acc, ex) => acc + (ex.duration || 0), 0) || 0
+                const mins = Math.floor(duration / 60)
+                const secs = duration % 60
+                const dayTitle = planData.days.find(d => d.id === session.dayId)?.title || `Día ${session.dayId}`
+                
+                return (
+                  <div key={i} className="bg-base-200 rounded-xl p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-black uppercase text-sm">{dayTitle}</h4>
+                        <p className="text-xs opacity-60">{formatDate(session.date)}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="badge badge-primary font-black uppercase">
+                          {mins > 0 ? `${mins}m ${secs}s` : `${secs}s`}
+                        </span>
+                      </div>
+                    </div>
+                    {session.exercises && session.exercises.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-base-300">
+                        <p className="text-xs opacity-50 mb-1">Tiempo por ejercicio:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {session.exercises.slice(0, 8).map((ex, j) => (
+                            <span key={j} className="text-[10px] bg-base-300 px-2 py-1 rounded">
+                              {ex.name?.split(' ')[0]}: {ex.duration ? `${ex.duration}s` : '-'}
+                            </span>
+                          ))}
+                          {session.exercises.length > 8 && (
+                            <span className="text-[10px] opacity-50 px-2 py-1">
+                              +{session.exercises.length - 8} más
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'exercises' && (
         <div className="flex-1 overflow-auto">
           {/* Stats rápidos */}
