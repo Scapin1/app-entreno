@@ -8,7 +8,7 @@ import { analyticsAPI, sessionsAPI, weightAPI } from '../../utils/api'
 import { getUISettings } from '../../utils/storage'
 import ReactECharts from 'echarts-for-react'
 
-const Analytics = ({ onNavigate }) => {
+const Analytics = ({ onBack, onNavigate }) => {
   const { profile } = useAuth()
   const { isDesktop } = useBreakpoint()
   const [timeRange, setTimeRange] = useState('12m')
@@ -634,6 +634,13 @@ const Analytics = ({ onNavigate }) => {
       
       <main style={styles.desktopMain}>
         <div style={styles.desktopContent}>
+          <div style={styles.desktopBackRow}>
+            <button type="button" onClick={onBack} style={styles.desktopBackButton}>
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back</span>
+              Volver al menú
+            </button>
+          </div>
+
           <h1 style={styles.title}>Dashboard</h1>
           <p style={styles.subtitle}>Seguimiento de tu progreso</p>
 
@@ -872,6 +879,9 @@ const Analytics = ({ onNavigate }) => {
   const MobileView = () => (
     <div style={{ minHeight: '100vh', backgroundColor: colors.background, fontFamily: typography.fontFamily.body }}>
       <header style={styles.mobileHeader}>
+        <button onClick={onBack} style={styles.mobileBackButton}>
+          <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>arrow_back</span>
+        </button>
         <span style={styles.mobileTitle}>Dashboard</span>
         <div style={styles.profileIcon}>
           <img src={profile?.image || 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=40&h=40&fit=crop&crop=face'} alt="Profile" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
@@ -1100,6 +1110,8 @@ const Analytics = ({ onNavigate }) => {
 const styles = {
   // Shared
   title: { fontSize: '3rem', fontFamily: typography.fontFamily.heading, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.02em', lineHeight: 1, marginBottom: '0.5rem' },
+  desktopBackRow: { marginBottom: '0.75rem', display: 'flex', alignItems: 'center' },
+  desktopBackButton: { border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.surfaceContainerLow, color: colors.onSurfaceVariant, padding: '0.42rem 0.72rem', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' },
   subtitle: { color: colors.onSurfaceVariant, fontSize: '1rem', marginBottom: '2rem' },
   statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' },
   statCard: { backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.lg, padding: '1.25rem', textAlign: 'center' },
@@ -1177,6 +1189,7 @@ const styles = {
 
   // Mobile
   mobileHeader: { position: 'fixed', top: 0, left: 0, right: 0, height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', backgroundColor: colors.background, borderBottom: `1px solid ${colors.surfaceContainerHighest}`, zIndex: 50 },
+  mobileBackButton: { width: '40px', height: '40px', borderRadius: '50%', border: 'none', background: 'none', color: colors.onSurface, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   mobileTitle: { fontFamily: typography.fontFamily.heading, fontWeight: 700, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: colors.onSurface },
   profileIcon: { width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', border: `2px solid ${colors.surfaceContainerHighest}` },
   mobileMain: { padding: '80px 1rem 100px' },

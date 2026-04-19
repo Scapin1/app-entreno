@@ -110,6 +110,9 @@ const MainMenu = ({ onSelectDay, onNavigate }) => {
     <div style={{ minHeight: '100vh', backgroundColor: colors.background, fontFamily: typography.fontFamily.body }}>
       {/* Header - solo logo y perfil */}
       <header style={styles.mobileHeader}>
+        <button onClick={() => onNavigate?.('settings')} style={styles.mobileHeaderIconBtn}>
+          <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>settings</span>
+        </button>
         <span style={styles.logoTextMobile}>GYMTRACKER</span>
         <div style={styles.profileIcon}>
           <img src={profile?.image || 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=40&h=40&fit=crop&crop=face'} alt="Profile" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
@@ -196,6 +199,7 @@ const styles = {
 
   // Mobile
   mobileHeader: { position: 'fixed', top: 0, left: 0, right: 0, height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', backgroundColor: colors.background, borderBottom: `1px solid ${colors.surfaceContainerHighest}`, zIndex: 50 },
+  mobileHeaderIconBtn: { width: '40px', height: '40px', borderRadius: '50%', border: 'none', background: 'none', color: colors.onSurfaceVariant, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   logoTextMobile: { fontFamily: typography.fontFamily.heading, fontWeight: 900, fontStyle: 'italic', fontSize: '18px', color: colors.primary, textTransform: 'uppercase', letterSpacing: '-0.02em' },
   profileIcon: { width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', border: `2px solid ${colors.surfaceContainerHighest}` },
   mobileMain: { padding: '80px 1rem 100px' },

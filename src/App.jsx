@@ -35,6 +35,10 @@ function AppContent() {
 
   const handleBack = () => {
     if (screen === 'preview' || screen === 'session') {
+      if (screen === 'session') {
+        const confirmed = window.confirm('¿Seguro querés salir? Se puede perder el progreso de la sesión actual.')
+        if (!confirmed) return
+      }
       setScreen('menu')
       setSelectedDay(null)
     } else if (screen === 'analytics' || screen === 'settings') {
