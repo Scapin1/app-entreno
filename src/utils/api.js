@@ -219,6 +219,9 @@ export const analyticsAPI = {
     if (limit) params.set('limit', String(limit))
     return apiCall(`/profiles/${profileId}/analytics/exercise-progress?${params.toString()}`)
   },
+
+  getDayInsights: (profileId, dayId) =>
+    apiCall(`/profiles/${profileId}/analytics/day-insights/${dayId}`),
 }
 
 // ==================== HELPERS ====================

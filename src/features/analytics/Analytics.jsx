@@ -40,7 +40,6 @@ const Analytics = ({ onNavigate }) => {
     return `${y}-${m}-${d}`
   })
   const [savingWeight, setSavingWeight] = useState(false)
-  const [seedingDemo, setSeedingDemo] = useState(false)
 
   const feelingScoreMap = {
     easy: 4,
@@ -156,20 +155,6 @@ const Analytics = ({ onNavigate }) => {
     }
   }
 
-  const handleSeedDemoData = async () => {
-    if (!profile?.id || seedingDemo) return
-
-    setSeedingDemo(true)
-    setError('')
-    try {
-      await analyticsAPI.seedDemo(profile.id, 12)
-      await loadAnalytics(timeRange)
-    } catch (e) {
-      setError('No pudimos generar datos demo')
-    } finally {
-      setSeedingDemo(false)
-    }
-  }
 
   const stats = useMemo(() => {
     const totalWorkouts = summary?.total_workouts ?? statsData?.total_workouts ?? 0
@@ -658,14 +643,6 @@ const Analytics = ({ onNavigate }) => {
                 {range.label}
               </button>
             ))}
-            <button
-              type="button"
-              onClick={handleSeedDemoData}
-              disabled={seedingDemo}
-              style={{ ...styles.seedButton, opacity: seedingDemo ? 0.7 : 1 }}
-            >
-              {seedingDemo ? 'Generando demo...' : 'Generar datos demo'}
-            </button>
           </div>
 
           {loading && <div style={styles.infoBox}>Cargando métricas del backend...</div>}
@@ -908,14 +885,6 @@ const Analytics = ({ onNavigate }) => {
                 {range.label}
               </button>
             ))}
-            <button
-              type="button"
-              onClick={handleSeedDemoData}
-              disabled={seedingDemo}
-              style={{ ...styles.mobileSeedButton, opacity: seedingDemo ? 0.7 : 1 }}
-            >
-              {seedingDemo ? 'Demo...' : 'Datos demo'}
-            </button>
           </div>
 
           {loading && <div style={styles.infoBox}>Cargando métricas del backend...</div>}
@@ -1194,7 +1163,6 @@ const styles = {
   rangeTabs: { display: 'flex', gap: '0.5rem', marginBottom: '1rem' },
   rangeTab: { border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.surfaceContainerLow, color: colors.onSurfaceVariant, padding: '0.4rem 0.8rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' },
   rangeTabActive: { border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.primary, color: colors.onPrimaryFixed, padding: '0.4rem 0.8rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' },
-  seedButton: { border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.secondary, color: colors.onPrimaryFixed, padding: '0.4rem 0.8rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' },
   sectionTitle: { fontSize: '0.875rem', fontFamily: typography.fontFamily.heading, fontWeight: 700, color: colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' },
   sessionsList: { marginBottom: '2rem' },
   sessionItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.md, marginBottom: '0.75rem' },
@@ -1220,7 +1188,6 @@ const styles = {
   mobileTabs: { display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto' },
   mobileTab: { padding: '0.5rem 1rem', background: 'none', border: 'none', color: colors.onSurfaceVariant, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', borderRadius: borderRadius.full, backgroundColor: colors.surfaceContainerLow },
   mobileTabActive: { padding: '0.5rem 1rem', background: colors.primary, border: 'none', color: colors.onPrimaryFixed, fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', borderRadius: borderRadius.full },
-  mobileSeedButton: { padding: '0.5rem 1rem', background: colors.secondary, border: 'none', color: colors.onPrimaryFixed, fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', borderRadius: borderRadius.full },
   mobileSessions: { display: 'flex', flexDirection: 'column', gap: '0.75rem' },
   mobileSessionItem: { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.md },
   mobileSessionLeft: { minWidth: '60px' },

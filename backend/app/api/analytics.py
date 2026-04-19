@@ -254,3 +254,41 @@ def get_exercise_actual_progress(
         end_date,
         limit,
     )
+
+
+@router.get("/{profile_id}/analytics/day-insights/{day_id}")
+def get_day_insights(
+    profile_id: int,
+    day_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get adaptive insights for a specific training day:
+    estimated duration and difficulty based on historical averages.
+    """
+    from app.models import Profile, TrainingDay
+
+    profile = db.query(Profile).filter(
+        Profile.id == profile_id,
+        Profile.user_id == current_user.id
+    ).first()
+
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile not found"
+        )
+
+    day = db.query(TrainingDay).filter(
+        TrainingDay.id == day_id,
+        TrainingDay.profile_id == profile_id,
+    ).first()
+
+    if not day:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Training day not found"
+        )
+
+    return analytics_service.get_day_insights(db, profile_id, day_id)

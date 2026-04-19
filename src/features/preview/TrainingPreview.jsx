@@ -1,21 +1,55 @@
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { colors, typography, borderRadius, shadows } from '../../styles/tokens'
 import { Sidebar } from '../../components/navigation'
 import { PrimaryButton } from '../../components/ui'
+import { analyticsAPI } from '../../utils/api'
 
 const TrainingPreview = ({ day, onStart, onBack, onNavigate }) => {
   const { profile } = useAuth()
+  const [dayInsights, setDayInsights] = useState(null)
   
   if (!day) return null
 
   // Extraer el nombre del día (quitar "Día X: ")
   const dayName = day.title.replace(/Día \d+: /, '')
   
-  // Calcular tiempo estimado (aprox 5 min por ejercicio)
+  // Fallback: estimado base (aprox 5 min por ejercicio)
   const mainBlock = day.blocks.find(b => b.name.toLowerCase().includes('principal') || b.name.toLowerCase().includes('fase'))
   const exerciseCount = mainBlock?.exercises?.length || 0
-  const estimatedTime = exerciseCount * 5
+  const baseEstimatedTime = exerciseCount * 5
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadDayInsights = async () => {
+      if (!profile?.id || !day?.id) return
+      try {
+        const data = await analyticsAPI.getDayInsights(profile.id, day.id)
+        if (!cancelled) setDayInsights(data)
+      } catch {
+        if (!cancelled) setDayInsights(null)
+      }
+    }
+
+    loadDayInsights()
+
+    return () => {
+      cancelled = true
+    }
+  }, [profile?.id, day?.id])
+
+  const estimatedTime = useMemo(() => {
+    const dynamic = Number(dayInsights?.estimated_duration_minutes || 0)
+    if (dynamic > 0) return dynamic
+    return baseEstimatedTime
+  }, [dayInsights?.estimated_duration_minutes, baseEstimatedTime])
+
+  const difficultyInfo = useMemo(() => {
+    const level = Number(dayInsights?.difficulty_level || 2)
+    const label = dayInsights?.difficulty_label || 'Media'
+    return { level: Math.max(1, Math.min(4, level)), label }
+  }, [dayInsights])
 
   const formatDuration = (totalSecs = 0) => {
     const mins = Math.floor(totalSecs / 60)
@@ -94,12 +128,17 @@ const TrainingPreview = ({ day, onStart, onBack, onNavigate }) => {
             <div style={styles.bentoCard}>
               <span style={styles.bentoLabel}>Intensity</span>
               <div style={styles.intensityRow}>
-                <div style={{...styles.intensityBar, backgroundColor: colors.error}} />
-                <div style={{...styles.intensityBar, backgroundColor: colors.error}} />
-                <div style={{...styles.intensityBar, backgroundColor: colors.error}} />
-                <div style={{...styles.intensityBar, backgroundColor: colors.surfaceContainerHighest}} />
+                {[1, 2, 3, 4].map((idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      ...styles.intensityBar,
+                      backgroundColor: idx <= difficultyInfo.level ? colors.error : colors.surfaceContainerHighest,
+                    }}
+                  />
+                ))}
               </div>
-              <span style={styles.intensityLabel}>Medium</span>
+              <span style={styles.intensityLabel}>{difficultyInfo.label}</span>
             </div>
           </div>
 
@@ -239,15 +278,15 @@ const TrainingPreview = ({ day, onStart, onBack, onNavigate }) => {
 
         {/* Bento Grid - Mobile */}
         <div style={styles.bentoGridMobile}>
-          <div style={styles.bentoCardMobile}>
-            <span style={styles.bentoLabelMobile}>Est. Time</span>
-            <div style={styles.bentoValueMobile}>{estimatedTime}m</div>
+            <div style={styles.bentoCardMobile}>
+              <span style={styles.bentoLabelMobile}>Est. Time</span>
+              <div style={styles.bentoValueMobile}>{estimatedTime}m</div>
+            </div>
+            <div style={styles.bentoCardMobile}>
+              <span style={styles.bentoLabelMobile}>Intensity</span>
+              <div style={styles.bentoValueMobile}>{difficultyInfo.label}</div>
+            </div>
           </div>
-          <div style={styles.bentoCardMobile}>
-            <span style={styles.bentoLabelMobile}>Exercises</span>
-            <div style={styles.bentoValueMobile}>{exerciseCount}</div>
-          </div>
-        </div>
 
         {/* Exercises List - Mobile */}
         <div style={styles.exercisesListMobile}>

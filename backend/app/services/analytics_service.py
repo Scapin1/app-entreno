@@ -309,6 +309,83 @@ def get_progression_summary(
     }
 
 
+def get_day_insights(
+    db: Session,
+    profile_id: int,
+    day_id: int,
+) -> Dict[str, Any]:
+    """
+    Get adaptive insights for a training day based on historical averages:
+    - estimated duration (avg completed session duration)
+    - difficulty score (avg feeling across exercise results)
+    """
+    from app.models import WorkoutSession, ExerciseResult
+
+    sessions = db.query(WorkoutSession).filter(
+        WorkoutSession.profile_id == profile_id,
+        WorkoutSession.day_id == day_id,
+        WorkoutSession.is_completed == 1,
+    ).all()
+
+    session_count = len(sessions)
+    total_duration_seconds = sum(s.total_duration or 0 for s in sessions)
+    avg_duration_seconds = (total_duration_seconds // session_count) if session_count > 0 else 0
+    avg_duration_minutes = round(avg_duration_seconds / 60) if avg_duration_seconds > 0 else 0
+
+    feeling_score = {
+        "easy": 1,
+        "good": 2,
+        "hard": 3,
+        "failed": 4,
+        "ok": 2,
+    }
+
+    feeling_rows = db.query(ExerciseResult.feeling).join(
+        WorkoutSession,
+        ExerciseResult.session_id == WorkoutSession.id,
+    ).filter(
+        WorkoutSession.profile_id == profile_id,
+        WorkoutSession.day_id == day_id,
+        WorkoutSession.is_completed == 1,
+        ExerciseResult.feeling.isnot(None),
+    ).all()
+
+    scores = [
+        feeling_score.get((row[0] or "").lower())
+        for row in feeling_rows
+        if feeling_score.get((row[0] or "").lower()) is not None
+    ]
+
+    avg_difficulty_score = round(sum(scores) / len(scores), 2) if scores else None
+
+    if avg_difficulty_score is None:
+        difficulty_label = "Sin datos"
+        difficulty_level = 2
+    elif avg_difficulty_score <= 1.5:
+        difficulty_label = "Baja"
+        difficulty_level = 1
+    elif avg_difficulty_score <= 2.5:
+        difficulty_label = "Media"
+        difficulty_level = 2
+    elif avg_difficulty_score <= 3.3:
+        difficulty_label = "Alta"
+        difficulty_level = 3
+    else:
+        difficulty_label = "Muy alta"
+        difficulty_level = 4
+
+    return {
+        "day_id": day_id,
+        "sessions_count": session_count,
+        "estimated_duration_minutes": avg_duration_minutes,
+        "average_duration_seconds": avg_duration_seconds,
+        "difficulty_score": avg_difficulty_score,
+        "difficulty_label": difficulty_label,
+        "difficulty_level": difficulty_level,
+        "feedback_samples": len(scores),
+    }
+
+
 def get_adherence_heatmap(
     db: Session,
     profile_id: int,
