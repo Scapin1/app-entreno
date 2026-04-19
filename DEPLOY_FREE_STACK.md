@@ -126,3 +126,22 @@ AUTO_INIT_DB=false
 - Backend no conecta DB:
   - validar `DATABASE_URL`
   - validar whitelist/red en proveedor DB
+
+---
+
+## 7) Deploy automático (GitHub Actions)
+
+Este repo incluye workflows para automatizar deploy/checks:
+
+- `.github/workflows/deploy-hf-backend.yml`
+  - Cuando hay cambios en `backend/**` en `main`, sincroniza automáticamente la carpeta `backend/` al repo del Space en Hugging Face.
+- `.github/workflows/ci-frontend.yml`
+  - Verifica que el frontend compile en cada push/PR relevante.
+
+### Secrets requeridos (GitHub repo → Settings → Secrets and variables → Actions)
+
+- `HF_USERNAME` → tu usuario de Hugging Face (ej. `Scapini`)
+- `HF_SPACE_REPO` → `<owner>/<space>` (ej. `Scapini/GymTracker`)
+- `HF_TOKEN` → token HF con permisos write sobre el Space
+
+Con eso, el backend queda auto-deploy con cada push a `main` que toque `backend/**`.
