@@ -17,6 +17,8 @@ config = context.config
 # Prefer DATABASE_URL from environment (e.g. Hugging Face / Supabase)
 db_url = os.getenv("DATABASE_URL")
 if db_url:
+    # Alembic uses ConfigParser interpolation; raw '%' in passwords (e.g. '%40') must be escaped.
+    db_url = db_url.replace("%", "%%")
     config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging
