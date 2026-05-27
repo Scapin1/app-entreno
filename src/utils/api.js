@@ -95,7 +95,12 @@ export const profilesAPI = {
 // ==================== TRAINING DAYS ====================
 
 export const trainingDaysAPI = {
-  list: (profileId) => apiCall(`/profiles/${profileId}/days/`),
+  list: (profileId, routineId) => {
+    const params = new URLSearchParams()
+    if (routineId) params.set('routine_id', routineId)
+    const qs = params.toString()
+    return apiCall(`/profiles/${profileId}/days/${qs ? `?${qs}` : ''}`)
+  },
   
   get: (profileId, dayId) => apiCall(`/profiles/${profileId}/days/${dayId}`),
   
