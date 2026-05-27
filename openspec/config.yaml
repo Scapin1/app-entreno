@@ -2,27 +2,49 @@
 schema: spec-driven
 
 context: |
-  Tech stack: React (JSX), Static JSON for data
-  Architecture: Vertical Slice, Feature-based
-  Style: Minimizing code duplication (DRY), JS Standard
-  Core Goal: Versatile training app (sets/reps vs time-based)
+  Tech stack: React 18 (JSX) + Vite 4 + TailwindCSS 3 + daisyUI 4, FastAPI + SQLAlchemy 2.0 + PostgreSQL
+  Architecture: Vertical Slice / Feature-based (frontend), Layered Service (backend)
+  Style: DRY, JS Standard, no TypeScript, Python w/ type hints
+  Core Goal: Training app supporting sets/reps and time-based exercises
+  Frontend features: auth (login/register), profile, training preview, session controller, analytics, settings
+  Backend layers: api/ (routes), schemas/ (Pydantic), services/ (business logic), models/ (SQLAlchemy)
+  CI: Frontend build-only via GitHub Actions; no test step configured
+
+testing:
+  strict_tdd: false
+  runner: none
+  reason: No test runner, test files, or test dependencies detected in frontend (no vitest/jest) or backend (no pytest). CI has no test step.
+  layers:
+    unit: false
+    integration: false
+    e2e: false
+  coverage: false
+  linter: none
+  type_checker: none
+  formatter: none
 
 rules:
   proposal:
+    - Include rollback plan for risky changes
     - Focus on feature separation (Vertical Slice)
-    - Define data structure for exercises in JSON
   specs:
     - Use Given/When/Then format for scenarios
-    - Define clear flows for training selection
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
   design:
     - Component architecture for versatile exercises (sets/reps vs time)
-    - Document data schema for the static JSON
+    - Include data flow for API interactions
+    - Document decisions with rationale
   tasks:
     - Group tasks by Feature
     - Small, verifiable steps
+    - Use hierarchical numbering (e.g., 1.1, 1.2)
   apply:
     - Use JSX, no TypeScript unless requested
-    - Maintain Vertical Slice structure
+    - Maintain Vertical Slice structure (frontend)
+    - Follow existing code patterns
   verify:
     - Manual verification against specs
     - Functional checks for UI flows
+    - API endpoint testing via curl/docs
+  archive:
+    - Warn before merging destructive deltas
