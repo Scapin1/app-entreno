@@ -11,7 +11,7 @@ const TYPE_LABELS = {
   stretching: 'Elongación',
 }
 
-const ExerciseList = ({ exercises, onChange }) => {
+const ExerciseList = ({ exercises, onChange, phaseType = 'normal' }) => {
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingIndex, setEditingIndex] = useState(null)
   const [deleteConfirmIndex, setDeleteConfirmIndex] = useState(null)
@@ -66,6 +66,10 @@ const ExerciseList = ({ exercises, onChange }) => {
   }
 
   const getExerciseSummary = (ex) => {
+    if (phaseType === 'circuit') {
+      if (ex.value) return `${ex.value}s`
+      return ''
+    }
     const hasSets = ex.sets && ex.sets > 0
     const hasReps = ex.reps && ex.reps.toString().trim()
     if (hasSets && hasReps) return `${ex.sets} × ${ex.reps}`
@@ -162,6 +166,7 @@ const ExerciseList = ({ exercises, onChange }) => {
           exercise={editingIndex !== null ? exercises[editingIndex] : null}
           onSave={handleSaveExercise}
           onCancel={handleCloseEditor}
+          phaseType={phaseType}
         />
       )}
     </div>

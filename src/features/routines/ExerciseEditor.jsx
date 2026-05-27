@@ -10,20 +10,30 @@ const EXERCISE_TYPES = [
   { value: 'stretching', label: 'Elongación', showSets: false },
 ]
 
-const ExerciseEditor = ({ exercise, onSave, onCancel }) => {
+const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) => {
   const isNew = !exercise
+  const isCircuit = phaseType === 'circuit'
+  const [error, setError] = useState('')
+
+  // Common fields
   const [name, setName] = useState(exercise?.name || '')
+  const [weight, setWeight] = useState(exercise?.weight ?? '')
+
+  // Circuit-specific fields
+  const [duration, setDuration] = useState(exercise?.value ?? 45)
+  const [restAfter, setRestAfter] = useState(exercise?.rest_after ?? 0)
+  const [implement, setImplement] = useState(exercise?.implement ?? '')
+
+  // Normal-specific fields
   const [type, setType] = useState(exercise?.type || 'strength')
   const [sets, setSets] = useState(exercise?.sets ?? 4)
   const [reps, setReps] = useState(exercise?.reps ?? '')
   const [rest, setRest] = useState(exercise?.rest ?? 60)
-  const [weight, setWeight] = useState(exercise?.weight ?? '')
   const [videoUrl, setVideoUrl] = useState(exercise?.videoUrl ?? '')
   const [notes, setNotes] = useState(exercise?.notes ?? '')
   const [configText, setConfigText] = useState(
     exercise?.config ? JSON.stringify(exercise.config, null, 2) : '{}'
   )
-  const [error, setError] = useState('')
 
   const currentType = EXERCISE_TYPES.find((t) => t.value === type)
   const showSetsFields = currentType?.showSets ?? true
@@ -34,6 +44,26 @@ const ExerciseEditor = ({ exercise, onSave, onCancel }) => {
       return
     }
 
+    if (isCircuit) {
+      if (!duration || Number(duration) <= 0) {
+        setError('La duración es obligatoria')
+        return
+      }
+
+      const exerciseData = {
+        name: name.trim(),
+        type: 'timer',
+        value: Number(duration),
+        rest_after: Number(restAfter) || 0,
+        ...(weight.trim() ? { weight: weight.trim() } : {}),
+        ...(implement.trim() ? { implement: implement.trim() } : {}),
+      }
+
+      onSave(exerciseData)
+      return
+    }
+
+    // Normal mode
     let config = {}
     try {
       config = JSON.parse(configText)
@@ -62,7 +92,10 @@ const ExerciseEditor = ({ exercise, onSave, onCancel }) => {
     <div style={styles.overlay}>
       <div style={styles.modal}>
         <div style={styles.header}>
-          <h3 style={styles.title}>{isNew ? 'Nuevo ejercicio' : 'Editar ejercicio'}</h3>
+          <h3 style={styles.title}>
+            {isNew ? 'Nuevo ejercicio' : 'Editar ejercicio'}
+            {isCircuit && <span style={styles.modeBadge}>Circuito</span>}
+          </h3>
           <button type="button" onClick={onCancel} style={styles.closeButton}>
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
           </button>
@@ -70,120 +103,193 @@ const ExerciseEditor = ({ exercise, onSave, onCancel }) => {
 
         {error && <div style={styles.errorBox}>{error}</div>}
 
-        <div style={styles.formGrid}>
-          {/* Name */}
-          <div style={styles.field}>
-            <label style={styles.label}>Nombre *</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => { setName(e.target.value); setError('') }}
-              placeholder="Ej: Press de banca"
-              style={styles.input}
-              autoFocus
-            />
-          </div>
+        {isCircuit ? (
+          /* ======================== CIRCUIT MODE ======================== */
+          <div>
+            <div style={styles.formGrid}>
+              {/* Name */}
+              <div style={{ ...styles.field, gridColumn: '1 / -1' }}>
+                <label style={styles.label}>Nombre *</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); setError('') }}
+                  placeholder="Ej: Sentadilla con salto"
+                  style={styles.input}
+                  autoFocus
+                />
+              </div>
 
-          {/* Type */}
-          <div style={styles.field}>
-            <label style={styles.label}>Tipo</label>
-            <select value={type} onChange={(e) => setType(e.target.value)} style={styles.input}>
-              {EXERCISE_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </div>
+              {/* Duration */}
+              <div style={styles.field}>
+                <label style={styles.label}>Duración (seg) *</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="600"
+                  value={duration}
+                  onChange={(e) => { setDuration(e.target.value); setError('') }}
+                  style={styles.input}
+                />
+              </div>
 
-          {/* Sets */}
-          {showSetsFields && (
+              {/* Rest after */}
+              <div style={styles.field}>
+                <label style={styles.label}>Pausa post-ejercicio (seg)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="600"
+                  value={restAfter}
+                  onChange={(e) => setRestAfter(e.target.value)}
+                  style={styles.input}
+                />
+              </div>
+
+              {/* Weight */}
+              <div style={styles.field}>
+                <label style={styles.label}>Peso (opcional)</label>
+                <input
+                  type="text"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="Ej: 20 kg"
+                  style={styles.input}
+                />
+              </div>
+
+              {/* Implement */}
+              <div style={styles.field}>
+                <label style={styles.label}>Implemento (opcional)</label>
+                <input
+                  type="text"
+                  value={implement}
+                  onChange={(e) => setImplement(e.target.value)}
+                  placeholder="Ej: barra, mancuerna"
+                  style={styles.input}
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ======================== NORMAL MODE ======================== */
+          <div>
+            <div style={styles.formGrid}>
+              {/* Name */}
+              <div style={styles.field}>
+                <label style={styles.label}>Nombre *</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); setError('') }}
+                  placeholder="Ej: Press de banca"
+                  style={styles.input}
+                  autoFocus
+                />
+              </div>
+
+              {/* Type */}
+              <div style={styles.field}>
+                <label style={styles.label}>Tipo</label>
+                <select value={type} onChange={(e) => setType(e.target.value)} style={styles.input}>
+                  {EXERCISE_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Sets */}
+              {showSetsFields && (
+                <div style={styles.field}>
+                  <label style={styles.label}>Series</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="99"
+                    value={sets}
+                    onChange={(e) => setSets(e.target.value)}
+                    style={styles.input}
+                  />
+                </div>
+              )}
+
+              {/* Reps */}
+              {showSetsFields && (
+                <div style={styles.field}>
+                  <label style={styles.label}>Repeticiones</label>
+                  <input
+                    type="text"
+                    value={reps}
+                    onChange={(e) => setReps(e.target.value)}
+                    placeholder="Ej: 8-12 o 10"
+                    style={styles.input}
+                  />
+                </div>
+              )}
+
+              {/* Rest */}
+              <div style={styles.field}>
+                <label style={styles.label}>Descanso (seg)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="600"
+                  value={rest}
+                  onChange={(e) => setRest(e.target.value)}
+                  style={styles.input}
+                />
+              </div>
+
+              {/* Weight */}
+              <div style={styles.field}>
+                <label style={styles.label}>Peso (opcional)</label>
+                <input
+                  type="text"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="Ej: 20 kg"
+                  style={styles.input}
+                />
+              </div>
+            </div>
+
+            {/* Config JSON */}
             <div style={styles.field}>
-              <label style={styles.label}>Series</label>
-              <input
-                type="number"
-                min="1"
-                max="99"
-                value={sets}
-                onChange={(e) => setSets(e.target.value)}
-                style={styles.input}
+              <label style={styles.label}>Config (JSON, opcional)</label>
+              <textarea
+                value={configText}
+                onChange={(e) => setConfigText(e.target.value)}
+                style={styles.textarea}
+                rows={3}
+                placeholder='{"intensity": "media", "rpe": 7}'
               />
             </div>
-          )}
 
-          {/* Reps */}
-          {showSetsFields && (
+            {/* Video URL */}
             <div style={styles.field}>
-              <label style={styles.label}>Repeticiones</label>
+              <label style={styles.label}>URL de video (opcional)</label>
               <input
                 type="text"
-                value={reps}
-                onChange={(e) => setReps(e.target.value)}
-                placeholder="Ej: 8-12 o 10"
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                placeholder="https://..."
                 style={styles.input}
               />
             </div>
-          )}
 
-          {/* Rest */}
-          <div style={styles.field}>
-            <label style={styles.label}>Descanso (seg)</label>
-            <input
-              type="number"
-              min="0"
-              max="600"
-              value={rest}
-              onChange={(e) => setRest(e.target.value)}
-              style={styles.input}
-            />
+            {/* Notes */}
+            <div style={styles.field}>
+              <label style={styles.label}>Notas (opcional)</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                style={styles.textarea}
+                rows={2}
+                placeholder="Notas sobre el ejercicio..."
+              />
+            </div>
           </div>
-
-          {/* Weight */}
-          <div style={styles.field}>
-            <label style={styles.label}>Peso (opcional)</label>
-            <input
-              type="text"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              placeholder="Ej: 20 kg"
-              style={styles.input}
-            />
-          </div>
-        </div>
-
-        {/* Config JSON */}
-        <div style={styles.field}>
-          <label style={styles.label}>Config (JSON, opcional)</label>
-          <textarea
-            value={configText}
-            onChange={(e) => setConfigText(e.target.value)}
-            style={styles.textarea}
-            rows={3}
-            placeholder='{"intensity": "media", "rpe": 7}'
-          />
-        </div>
-
-        {/* Video URL */}
-        <div style={styles.field}>
-          <label style={styles.label}>URL de video (opcional)</label>
-          <input
-            type="text"
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
-            placeholder="https://..."
-            style={styles.input}
-          />
-        </div>
-
-        {/* Notes */}
-        <div style={styles.field}>
-          <label style={styles.label}>Notas (opcional)</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            style={styles.textarea}
-            rows={2}
-            placeholder="Notas sobre el ejercicio..."
-          />
-        </div>
+        )}
 
         {/* Actions */}
         <div style={styles.actions}>
@@ -227,12 +333,25 @@ const styles = {
     marginBottom: '1rem',
   },
   title: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
     fontSize: '1.125rem',
     fontFamily: typography.fontFamily.heading,
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '0.02em',
     color: colors.onSurface,
+  },
+  modeBadge: {
+    fontSize: '0.55rem',
+    fontWeight: 700,
+    color: colors.onPrimaryFixed,
+    backgroundColor: colors.primary,
+    padding: '0.12rem 0.4rem',
+    borderRadius: borderRadius.full,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
   },
   closeButton: {
     width: '32px',
