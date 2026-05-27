@@ -123,6 +123,7 @@ function AppContent() {
       {screen === 'preview' && selectedDay && (
         <TrainingPreview 
           day={selectedDay}
+          routineId={selectedDay?.routine_id}
           onStart={handleStartWorkout}
           onBack={handleBack}
           onNavigate={navigate}

@@ -3,11 +3,30 @@ import { useAuth } from '../../context/AuthContext'
 import { colors, typography, borderRadius, shadows } from '../../styles/tokens'
 import { Sidebar } from '../../components/navigation'
 import { PrimaryButton } from '../../components/ui'
-import { analyticsAPI } from '../../utils/api'
+import { analyticsAPI, routinesAPI } from '../../utils/api'
 
-const TrainingPreview = ({ day, onStart, onBack, onNavigate }) => {
+const TrainingPreview = ({ day, routineId, onStart, onBack, onNavigate }) => {
   const { profile } = useAuth()
   const [dayInsights, setDayInsights] = useState(null)
+  const [routineName, setRoutineName] = useState('')
+
+  useEffect(() => {
+    if (!routineId || !profile?.id) {
+      setRoutineName('')
+      return
+    }
+    let cancelled = false
+    const load = async () => {
+      try {
+        const routine = await routinesAPI.get(profile.id, routineId)
+        if (!cancelled) setRoutineName(routine.name || '')
+      } catch {
+        if (!cancelled) setRoutineName('')
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [routineId, profile?.id])
   
   if (!day) return null
 
@@ -102,6 +121,7 @@ const TrainingPreview = ({ day, onStart, onBack, onNavigate }) => {
             <div style={styles.dayBadge}>
               <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>calendar_today</span>
               <span>Day {day.id} · Phase 1</span>
+              {routineName && <span style={styles.routineBadge}>{routineName}</span>}
             </div>
             <h1 style={styles.dayTitle}>
               {dayName.split(' ').map((word, i) => 
@@ -267,6 +287,7 @@ const TrainingPreview = ({ day, onStart, onBack, onNavigate }) => {
           <div style={styles.dayBadge}>
             <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>calendar_today</span>
             <span>Day {day.id}</span>
+            {routineName && <span style={styles.routineBadgeMobile}>{routineName}</span>}
           </div>
           <h1 style={styles.mobileDayTitle}>
             {dayName.split(' ').map((word, i) => 
@@ -414,7 +435,9 @@ const styles = {
 
   // Header Section
   headerSection: { marginBottom: '3rem' },
-  dayBadge: { display: 'flex', alignItems: 'center', gap: '12px', color: colors.primary, fontSize: '1.125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1.5rem', fontFamily: typography.fontFamily.heading },
+  dayBadge: { display: 'flex', alignItems: 'center', gap: '12px', color: colors.primary, fontSize: '1.125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1.5rem', fontFamily: typography.fontFamily.heading, flexWrap: 'wrap' },
+  routineBadge: { fontSize: '0.7rem', fontWeight: 700, color: colors.onTertiary, backgroundColor: colors.tertiary, padding: '0.2rem 0.55rem', borderRadius: borderRadius.full, letterSpacing: '0.05em', textTransform: 'uppercase' },
+  routineBadgeMobile: { fontSize: '0.6rem', fontWeight: 700, color: colors.onTertiary, backgroundColor: colors.tertiary, padding: '0.15rem 0.45rem', borderRadius: borderRadius.full, letterSpacing: '0.05em', textTransform: 'uppercase' },
   dayTitle: { fontSize: 'clamp(4rem, 6vw, 7rem)', fontFamily: typography.fontFamily.heading, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.02em', lineHeight: 0.85, marginBottom: '1rem', color: colors.onSurface },
   dayFocus: { fontSize: '1.25rem', color: colors.onSurfaceVariant, fontFamily: typography.fontFamily.body },
 
