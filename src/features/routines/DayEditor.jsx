@@ -4,7 +4,7 @@ import { colors, typography, borderRadius } from '../../styles/tokens'
 import { Sidebar, BottomNav } from '../../components/navigation'
 import { trainingDaysAPI } from '../../utils/api'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
-import ExerciseList from './ExerciseList'
+import PhaseManager from './PhaseManager'
 
 const DAY_TYPES = [
   { value: 'strength', label: 'Fuerza' },
@@ -25,36 +25,32 @@ const DayEditor = ({ day, onBack, onNavigate }) => {
     Array.isArray(day?.implements) ? [...day.implements] : []
   )
   const [newImplement, setNewImplement] = useState('')
-  const [exercises, setExercises] = useState([])
+  const [blocks, setBlocks] = useState([])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  // Load exercises from the day's blocks
+  // Load blocks from the day
   useEffect(() => {
     if (!day?.blocks) {
+      setBlocks([])
       setLoading(false)
       return
     }
 
-    // Check if blocks have the nested format (with exercises arrays)
-    const hasNestedExercises = Array.isArray(day.blocks[0]?.exercises)
+    let parsedBlocks = day.blocks.map((b) => ({ ...b }))
 
-    if (hasNestedExercises) {
-      // Collect exercises from all blocks
-      const allExercises = []
-      for (const block of day.blocks) {
-        if (Array.isArray(block.exercises)) {
-          allExercises.push(...block.exercises)
-        }
-      }
-      setExercises(allExercises)
-    } else if (Array.isArray(day.blocks)) {
-      // Flat format — each block element IS an exercise
-      setExercises(day.blocks)
+    // Legacy migration: single "Ejercicios" block → 3 default phases
+    if (parsedBlocks.length === 1 && parsedBlocks[0].name === 'Ejercicios') {
+      parsedBlocks = [
+        { name: 'Calentamiento', exercises: [] },
+        { name: 'Fase Principal', exercises: parsedBlocks[0].exercises || [] },
+        { name: 'Vuelta a la calma', exercises: [] },
+      ]
     }
 
+    setBlocks(parsedBlocks)
     setLoading(false)
   }, [day?.id])
 
@@ -77,31 +73,46 @@ const DayEditor = ({ day, onBack, onNavigate }) => {
     setSaved(false)
 
     try {
-      // Build blocks array — wrap exercises in a single "Ejercicios" block
-      const blocks = [
-        {
-          name: 'Ejercicios',
-          config: { micro_pause: 60, macro_pause: 120 },
-          exercises: exercises.map((ex) => ({
-            name: ex.name,
-            type: ex.type || 'strength',
-            sets: typeof ex.sets === 'number' ? ex.sets : 0,
-            reps: ex.reps ? String(ex.reps) : '',
-            rest: typeof ex.rest === 'number' ? ex.rest : 0,
-            weight: ex.weight || '',
-            config: ex.config || {},
-            videoUrl: ex.videoUrl || '',
-            notes: ex.notes || '',
-          })),
-        },
-      ]
+      // Normalize blocks: ensure each exercise has the correct shape
+      // based on the phase type
+      const normalizedBlocks = blocks.map((block) => {
+        const isCircuit = block.type === 'circuit'
+        return {
+          name: block.name,
+          ...(block.type ? { type: block.type } : {}),
+          ...(block.config ? { config: block.config } : {}),
+          exercises: (block.exercises || []).map((ex) => {
+            if (isCircuit) {
+              return {
+                name: ex.name,
+                type: 'timer',
+                value: Number(ex.value) || 0,
+                rest_after: typeof ex.rest_after === 'number' ? ex.rest_after : 0,
+                ...(ex.weight ? { weight: ex.weight } : {}),
+                ...(ex.implement ? { implement: ex.implement } : {}),
+              }
+            }
+            return {
+              name: ex.name,
+              type: ex.type || 'strength',
+              sets: typeof ex.sets === 'number' ? ex.sets : 0,
+              reps: ex.reps ? String(ex.reps) : '',
+              rest: typeof ex.rest === 'number' ? ex.rest : 0,
+              weight: ex.weight || '',
+              config: ex.config || {},
+              videoUrl: ex.videoUrl || '',
+              notes: ex.notes || '',
+            }
+          }),
+        }
+      })
 
       const data = {
         title: title.trim(),
         focus: focus.trim(),
         type: dayType,
         implements: implementsList,
-        blocks,
+        blocks: normalizedBlocks,
       }
 
       await trainingDaysAPI.update(profile.id, day.id, data)
@@ -213,12 +224,12 @@ const DayEditor = ({ day, onBack, onNavigate }) => {
                 )}
               </div>
 
-              {/* Exercises */}
+              {/* Phases */}
               <div style={styles.section}>
-                <h2 style={styles.sectionTitle}>Ejercicios</h2>
-                <ExerciseList
-                  exercises={exercises}
-                  onChange={setExercises}
+                <h2 style={styles.sectionTitle}>Fases</h2>
+                <PhaseManager
+                  blocks={blocks}
+                  onChange={setBlocks}
                 />
               </div>
 
@@ -323,8 +334,8 @@ const DayEditor = ({ day, onBack, onNavigate }) => {
             </div>
 
             <div style={styles.mobileSection}>
-              <h2 style={styles.mobileSectionTitle}>Ejercicios</h2>
-              <ExerciseList exercises={exercises} onChange={setExercises} />
+              <h2 style={styles.mobileSectionTitle}>Fases</h2>
+              <PhaseManager blocks={blocks} onChange={setBlocks} />
             </div>
 
             <button
