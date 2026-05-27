@@ -391,6 +391,7 @@ const SessionController = ({ day, onBack }) => {
           setBackendSessionId(sessionId)
         }
       } catch (error) {
+        console.warn('[Session]', error.message)
         // fallback local only
       }
     }
