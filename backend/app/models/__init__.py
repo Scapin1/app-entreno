@@ -30,6 +30,7 @@ class Profile(Base):
     # Relationships
     user = relationship("User", back_populates="profiles")
     training_days = relationship("TrainingDay", back_populates="profile", cascade="all, delete-orphan")
+    routines = relationship("Routine", back_populates="profile", cascade="all, delete-orphan")
     sessions = relationship("WorkoutSession", back_populates="profile", cascade="all, delete-orphan")
     body_weights = relationship("BodyWeight", back_populates="profile", cascade="all, delete-orphan")
     recovery_state = relationship("RecoveryState", back_populates="profile", uselist=False, cascade="all, delete-orphan")
@@ -40,8 +41,10 @@ class TrainingDay(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     profile_id = Column(Integer, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
+    routine_id = Column(Integer, ForeignKey("routines.id"), nullable=True)
     day_number = Column(Integer, nullable=False)
     title = Column(String(255), nullable=False)
+    type = Column(String(50), nullable=True)  # strength, hypertrophy, endurance, cardio, recovery
     focus = Column(String(255), nullable=True)
     implements = Column(String, nullable=True)  # Stored as JSON string
     blocks = Column(String, nullable=True)  # Stored as JSON string
@@ -49,7 +52,24 @@ class TrainingDay(Base):
     
     # Relationships
     profile = relationship("Profile", back_populates="training_days")
+    routine = relationship("Routine", back_populates="training_days")
     sessions = relationship("WorkoutSession", back_populates="training_day")
+
+
+class Routine(Base):
+    __tablename__ = "routines"
+
+    id = Column(Integer, primary_key=True)
+    profile_id = Column(Integer, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), nullable=False, default="Mi rutina")
+    is_active = Column(Integer, default=1)
+    is_selected = Column(Integer, default=0)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+
+    # Relationships
+    profile = relationship("Profile", back_populates="routines")
+    training_days = relationship("TrainingDay", back_populates="routine", cascade="all, delete-orphan")
 
 
 class WorkoutSession(Base):
@@ -82,6 +102,7 @@ class ExerciseResult(Base):
     feeling = Column(String(20), nullable=True)  # easy, good, hard, failed
     duration = Column(Integer, nullable=True)  # seconds
     timestamp = Column(Integer, nullable=False)
+    note = Column(String(100), nullable=True)
     
     # Relationships
     session = relationship("WorkoutSession", back_populates="exercise_results")
@@ -95,6 +116,7 @@ class BodyWeight(Base):
     weight = Column(String(20), nullable=False)  # Stored as string to handle decimals
     date = Column(String(10), nullable=False)  # YYYY-MM-DD
     timestamp = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
     profile = relationship("Profile", back_populates="body_weights")

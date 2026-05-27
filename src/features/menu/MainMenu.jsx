@@ -1,57 +1,52 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import planData from '../../data/plan.json'
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/tokens'
 import { Sidebar, BottomNav } from '../../components/navigation'
 import { trainingDaysAPI } from '../../utils/api'
+import RoutineSelector from '../routines/RoutineSelector'
 
 const MainMenu = ({ onSelectDay, onNavigate }) => {
   const { profile } = useAuth()
   const [days, setDays] = useState(planData.days)
   const [loadingDays, setLoadingDays] = useState(true)
   const [daysError, setDaysError] = useState('')
+  const [selectedRoutineId, setSelectedRoutineId] = useState(null)
+
+  const loadDays = useCallback(async () => {
+    if (!profile?.id) {
+      setDays(planData.days)
+      setLoadingDays(false)
+      return
+    }
+
+    setLoadingDays(true)
+    setDaysError('')
+
+    try {
+      // Pass routine_id filter when a routine is selected
+      const response = await trainingDaysAPI.list(profile.id, selectedRoutineId)
+      const remoteDays = Array.isArray(response) ? response : (response?.days || [])
+      if (remoteDays.length > 0) {
+        setDays(remoteDays)
+      } else {
+        setDays(planData.days)
+      }
+    } catch (error) {
+      setDays(planData.days)
+      setDaysError('No se pudieron cargar los días del backend. Mostrando plan local.')
+    } finally {
+      setLoadingDays(false)
+    }
+  }, [profile?.id, selectedRoutineId])
 
   useEffect(() => {
-    let cancelled = false
-
-    const loadDays = async () => {
-      if (!profile?.id) {
-        if (!cancelled) {
-          setDays(planData.days)
-          setLoadingDays(false)
-        }
-        return
-      }
-
-      setLoadingDays(true)
-      setDaysError('')
-
-      try {
-        const response = await trainingDaysAPI.list(profile.id)
-        const remoteDays = Array.isArray(response) ? response : (response?.days || [])
-        if (!cancelled) {
-          if (remoteDays.length > 0) {
-            setDays(remoteDays)
-          } else {
-            setDays(planData.days)
-          }
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setDays(planData.days)
-          setDaysError('No se pudieron cargar los días del backend. Mostrando plan local.')
-        }
-      } finally {
-        if (!cancelled) setLoadingDays(false)
-      }
-    }
-
     loadDays()
+  }, [loadDays])
 
-    return () => {
-      cancelled = true
-    }
-  }, [profile?.id])
+  const handleRoutineChange = (routineId) => {
+    setSelectedRoutineId(routineId)
+  }
 
   // =====================
   // DESKTOP VERSION (≥1024px)
@@ -66,6 +61,23 @@ const MainMenu = ({ onSelectDay, onNavigate }) => {
             Días de <span style={{ color: colors.primary }}>Entreno</span>
           </h1>
           <p style={styles.desktopSubtitle}>Seleccioná un día para ver los ejercicios</p>
+
+          {/* Routine Selector + Edit Link */}
+          <div style={styles.desktopRoutineRow}>
+            <RoutineSelector
+              profileId={profile?.id}
+              onRoutineChange={handleRoutineChange}
+            />
+            <button
+              type="button"
+              onClick={() => onNavigate?.('routines')}
+              style={styles.editRoutinesLink}
+              title="Editar rutinas"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>tune</span>
+              Editar rutinas
+            </button>
+          </div>
 
           {loadingDays && <p style={styles.infoText}>Cargando días desde backend...</p>}
           {!loadingDays && daysError && <p style={styles.warningText}>{daysError}</p>}
@@ -121,6 +133,23 @@ const MainMenu = ({ onSelectDay, onNavigate }) => {
 
       {/* Content */}
       <main style={styles.mobileMain}>
+        {/* Routine Selector + Edit Link (Mobile) */}
+        <div style={styles.mobileRoutineSection}>
+          <RoutineSelector
+            profileId={profile?.id}
+            onRoutineChange={handleRoutineChange}
+          />
+          <button
+            type="button"
+            onClick={() => onNavigate?.('routines')}
+            style={styles.mobileEditRoutinesBtn}
+            title="Editar rutinas"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>tune</span>
+            Editar
+          </button>
+        </div>
+
         {loadingDays && <p style={styles.infoText}>Cargando días...</p>}
         {!loadingDays && daysError && <p style={styles.warningText}>{daysError}</p>}
         <div style={styles.mobileList}>
@@ -179,7 +208,9 @@ const styles = {
   desktopMain: { marginLeft: '280px', flex: 1, minHeight: '100vh', display: 'flex', justifyContent: 'center', padding: '3rem 4rem' },
   desktopContent: { maxWidth: '1400px', width: '100%' },
   desktopTitle: { fontSize: '3.5rem', fontFamily: typography.fontFamily.heading, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.02em', lineHeight: 1, marginBottom: '0.5rem' },
-  desktopSubtitle: { color: colors.onSurfaceVariant, fontSize: '1.125rem', marginBottom: '2.5rem' },
+  desktopSubtitle: { color: colors.onSurfaceVariant, fontSize: '1.125rem', marginBottom: '1.5rem' },
+  desktopRoutineRow: { display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' },
+  editRoutinesLink: { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.surfaceContainerHigh, color: colors.onSurfaceVariant, padding: '0.45rem 0.8rem', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' },
   desktopGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' },
   desktopCard: { backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.xl, padding: '2rem', textAlign: 'left', border: 'none', cursor: 'pointer', position: 'relative', display: 'flex', flexDirection: 'column', gap: '0.75rem', transition: 'all 0.2s', minHeight: '180px' },
   todayCard: { border: `2px solid ${colors.tertiary}` },
@@ -203,6 +234,8 @@ const styles = {
   logoTextMobile: { fontFamily: typography.fontFamily.heading, fontWeight: 900, fontStyle: 'italic', fontSize: '18px', color: colors.primary, textTransform: 'uppercase', letterSpacing: '-0.02em' },
   profileIcon: { width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', border: `2px solid ${colors.surfaceContainerHighest}` },
   mobileMain: { padding: '80px 1rem 100px' },
+  mobileRoutineSection: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' },
+  mobileEditRoutinesBtn: { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.surfaceContainerHigh, color: colors.onSurfaceVariant, padding: '0.35rem 0.65rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 },
   mobileList: { display: 'flex', flexDirection: 'column', gap: '0.75rem' },
   mobileCard: { backgroundColor: colors.surfaceContainerLow, borderRadius: borderRadius.lg, padding: '1rem', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', position: 'relative', overflow: 'hidden' },
   mobileTodayCard: { borderLeft: `4px solid ${colors.tertiary}` },

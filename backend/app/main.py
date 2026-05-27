@@ -45,7 +45,7 @@ async def health_check():
 
 
 # Import and include routers
-from app.api import auth, profiles, training_days, training_days_seed, sessions, weight, recovery, analytics
+from app.api import auth, profiles, training_days, training_days_seed, sessions, weight, recovery, analytics, routines
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(profiles.router, prefix="/api/profiles", tags=["profiles"])
@@ -55,3 +55,4 @@ app.include_router(sessions.router, prefix="/api/profiles", tags=["sessions"])
 app.include_router(weight.router, prefix="/api/weight", tags=["weight"])
 app.include_router(recovery.router, prefix="/api", tags=["recovery"])
 app.include_router(analytics.router, prefix="/api/profiles", tags=["analytics"])
+app.include_router(routines.router, prefix="/api/profiles", tags=["routines"])

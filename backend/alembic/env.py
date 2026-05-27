@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # Import Base and all models
 from app.database import Base
-from app.models import User, Profile, TrainingDay, WorkoutSession, ExerciseResult, BodyWeight, RecoveryState
+from app.models import User, Profile, TrainingDay, WorkoutSession, ExerciseResult, BodyWeight, RecoveryState, Routine
 
 # this is the Alembic Config object
 config = context.config

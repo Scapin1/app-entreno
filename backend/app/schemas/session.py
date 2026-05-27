@@ -36,6 +36,7 @@ class ExerciseResultCreate(BaseModel):
     actual_weight: Optional[str] = None
     feeling: Optional[str] = None  # easy, good, hard, failed
     duration: Optional[int] = None
+    note: Optional[str] = None
 
 
 class ExerciseResultResponse(BaseModel):
@@ -47,6 +48,7 @@ class ExerciseResultResponse(BaseModel):
     actual_weight: Optional[str] = None
     feeling: Optional[str] = None
     duration: Optional[int] = None
+    note: Optional[str] = None
     timestamp: int
 
     model_config = ConfigDict(from_attributes=True)

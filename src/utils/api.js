@@ -95,7 +95,12 @@ export const profilesAPI = {
 // ==================== TRAINING DAYS ====================
 
 export const trainingDaysAPI = {
-  list: (profileId) => apiCall(`/profiles/${profileId}/days/`),
+  list: (profileId, routineId) => {
+    const params = new URLSearchParams()
+    if (routineId) params.set('routine_id', routineId)
+    const qs = params.toString()
+    return apiCall(`/profiles/${profileId}/days/${qs ? `?${qs}` : ''}`)
+  },
   
   get: (profileId, dayId) => apiCall(`/profiles/${profileId}/days/${dayId}`),
   
@@ -130,10 +135,10 @@ export const sessionsAPI = {
   list: (profileId, limit = 30, offset = 0) =>
     apiCall(`/profiles/${profileId}/sessions?limit=${limit}&offset=${offset}`),
   
-  complete: (profileId, sessionId, duration) => 
-    apiCall(`/profiles/${profileId}/sessions/${sessionId}/complete`, {
+  complete: (profileId, sessionId, data) => 
+    apiCall(`/profiles/${profileId}/sessions/${sessionId}`, {
       method: 'PUT',
-      body: JSON.stringify({ total_duration: duration }),
+      body: JSON.stringify(data),
     }),
   
   addExerciseResult: (profileId, sessionId, data) => 
@@ -222,6 +227,37 @@ export const analyticsAPI = {
 
   getDayInsights: (profileId, dayId) =>
     apiCall(`/profiles/${profileId}/analytics/day-insights/${dayId}`),
+}
+
+// ==================== ROUTINES ====================
+
+export const routinesAPI = {
+  list: (profileId) => apiCall(`/profiles/${profileId}/routines/`),
+
+  create: (profileId, data) =>
+    apiCall(`/profiles/${profileId}/routines/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  get: (profileId, routineId) =>
+    apiCall(`/profiles/${profileId}/routines/${routineId}`),
+
+  update: (profileId, routineId, data) =>
+    apiCall(`/profiles/${profileId}/routines/${routineId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  remove: (profileId, routineId) =>
+    apiCall(`/profiles/${profileId}/routines/${routineId}`, {
+      method: 'DELETE',
+    }),
+
+  select: (profileId, routineId) =>
+    apiCall(`/profiles/${profileId}/routines/${routineId}/select`, {
+      method: 'POST',
+    }),
 }
 
 // ==================== HELPERS ====================

@@ -4,7 +4,7 @@ from typing import List
 import json
 
 from app.database import get_db
-from app.models import TrainingDay, Profile
+from app.models import TrainingDay, Profile, Routine
 from app.dependencies import get_current_user
 from app.schemas.user import UserResponse
 from app.schemas.training_day import DayResponse
@@ -44,6 +44,16 @@ def seed_training_days(
             detail="Training days already seeded for this profile"
         )
     
+    # Create or reuse the default routine
+    routine = Routine(
+        profile_id=profile_id,
+        name="Mi rutina",
+        is_active=1,
+        is_selected=1
+    )
+    db.add(routine)
+    db.flush()  # Get routine.id without committing yet
+
     # Plan data (from plan.json)
     seed_data = [
         {
@@ -172,6 +182,7 @@ def seed_training_days(
     for day_data in seed_data:
         day = TrainingDay(
             profile_id=profile_id,
+            routine_id=routine.id,
             day_number=day_data["day_number"],
             title=day_data["title"],
             focus=day_data.get("focus"),

@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 import json
 
 from app.database import get_db
 from app.schemas.training_day import DayCreate, DayUpdate, DayResponse
-from app.models import TrainingDay, Profile
+from app.models import TrainingDay, Profile, Routine
 from app.dependencies import get_current_user
 from app.schemas.user import UserResponse
 
@@ -27,11 +27,15 @@ def parse_json_field(val):
 @router.get("/{profile_id}/days/", response_model=List[DayResponse])
 def list_training_days(
     profile_id: int,
+    routine_id: Optional[int] = Query(None, description="Filter by routine ID"),
     current_user: UserResponse = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     List all training days for a specific profile.
+
+    Supports optional `routine_id` query parameter to filter days by routine.
+    When omitted, returns all active days for the profile (backward compatible).
     """
     # Verify profile belongs to user
     profile = db.query(Profile).filter(
@@ -44,11 +48,16 @@ def list_training_days(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Profile not found"
         )
-    
-    days = db.query(TrainingDay).filter(
+
+    query = db.query(TrainingDay).filter(
         TrainingDay.profile_id == profile_id,
         TrainingDay.is_active == 1
-    ).order_by(TrainingDay.day_number).all()
+    )
+
+    if routine_id is not None:
+        query = query.filter(TrainingDay.routine_id == routine_id)
+
+    days = query.order_by(TrainingDay.day_number).all()
     
     return days
 
@@ -62,6 +71,10 @@ def create_training_day(
 ):
     """
     Create a new training day for a profile.
+
+    If `routine_id` is provided in the body, the day is assigned to that routine.
+    If omitted, the day is assigned to the profile's currently selected routine.
+    If the profile has no selected routine and no routine_id is given, returns 400.
     """
     # Verify profile belongs to user
     profile = db.query(Profile).filter(
@@ -74,6 +87,22 @@ def create_training_day(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Profile not found"
         )
+
+    # Resolve routine_id
+    routine_id = day_data.routine_id
+    if routine_id is None:
+        selected = db.query(Routine).filter(
+            Routine.profile_id == profile_id,
+            Routine.is_selected == 1,
+            Routine.is_active == 1
+        ).first()
+        if not selected:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No routine_id provided and profile has no selected routine. "
+                       "Create or select a routine first."
+            )
+        routine_id = selected.id
     
     # Convert lists to JSON strings
     implements_json = json.dumps(day_data.implements) if day_data.implements else None
@@ -81,8 +110,10 @@ def create_training_day(
     
     day = TrainingDay(
         profile_id=profile_id,
+        routine_id=routine_id,
         day_number=day_data.day_number,
         title=day_data.title,
+        type=day_data.type,
         focus=day_data.focus,
         implements=implements_json,
         blocks=blocks_json,
@@ -166,6 +197,8 @@ def update_training_day(
     
     if day_data.title is not None:
         day.title = day_data.title
+    if day_data.type is not None:
+        day.type = day_data.type
     if day_data.focus is not None:
         day.focus = day_data.focus
     if day_data.implements is not None:

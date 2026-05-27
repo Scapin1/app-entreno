@@ -6,8 +6,11 @@ import ProfileSelector from './features/profile/ProfileSelector'
 import MainMenu from './features/menu/MainMenu'
 import TrainingPreview from './features/preview/TrainingPreview'
 import SessionController from './features/session/SessionController'
+import { sessionsAPI } from './utils/api'
+import { getCurrentSession } from './utils/storage'
 import Analytics from './features/analytics/Analytics'
 import Settings from './features/settings/Settings'
+import RoutineManager from './features/routines/RoutineManager'
 
 function AppContent() {
   const { isAuthenticated, profile, logout, loading } = useAuth()
@@ -36,12 +39,26 @@ function AppContent() {
   const handleBack = () => {
     if (screen === 'preview' || screen === 'session') {
       if (screen === 'session') {
+        const currentSession = getCurrentSession()
+
+        // Si no hay sesión activa (ya fue completada/terminada en SessionController), navegamos sin preguntar
+        if (!currentSession?.backendSessionId) {
+          setScreen('menu')
+          setSelectedDay(null)
+          return
+        }
+
         const confirmed = window.confirm('¿Seguro querés salir? Se puede perder el progreso de la sesión actual.')
         if (!confirmed) return
+
+        sessionsAPI.complete(currentSession.profileId, currentSession.backendSessionId, {
+          total_duration: currentSession.elapsedTime,
+          is_completed: false,
+        }).catch(err => console.warn('[API]', err.message))
       }
       setScreen('menu')
       setSelectedDay(null)
-    } else if (screen === 'analytics' || screen === 'settings') {
+    } else if (screen === 'analytics' || screen === 'settings' || screen === 'routines') {
       setScreen('menu')
     }
   }
@@ -56,6 +73,7 @@ function AppContent() {
       'days': 'menu',
       'analytics': 'analytics',
       'settings': 'settings',
+      'routines': 'routines',
     }
     const screen = screenMap[targetScreen] || targetScreen
     if (screen === 'menu') {
@@ -105,6 +123,7 @@ function AppContent() {
       {screen === 'preview' && selectedDay && (
         <TrainingPreview 
           day={selectedDay}
+          routineId={selectedDay?.routine_id}
           onStart={handleStartWorkout}
           onBack={handleBack}
           onNavigate={navigate}
@@ -127,6 +146,13 @@ function AppContent() {
 
       {screen === 'settings' && (
         <Settings 
+          onBack={handleBack}
+          onNavigate={navigate}
+        />
+      )}
+
+      {screen === 'routines' && (
+        <RoutineManager 
           onBack={handleBack}
           onNavigate={navigate}
         />
