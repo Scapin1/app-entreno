@@ -224,6 +224,37 @@ export const analyticsAPI = {
     apiCall(`/profiles/${profileId}/analytics/day-insights/${dayId}`),
 }
 
+// ==================== ROUTINES ====================
+
+export const routinesAPI = {
+  list: (profileId) => apiCall(`/profiles/${profileId}/routines/`),
+
+  create: (profileId, data) =>
+    apiCall(`/profiles/${profileId}/routines/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  get: (profileId, routineId) =>
+    apiCall(`/profiles/${profileId}/routines/${routineId}`),
+
+  update: (profileId, routineId, data) =>
+    apiCall(`/profiles/${profileId}/routines/${routineId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  remove: (profileId, routineId) =>
+    apiCall(`/profiles/${profileId}/routines/${routineId}`, {
+      method: 'DELETE',
+    }),
+
+  select: (profileId, routineId) =>
+    apiCall(`/profiles/${profileId}/routines/${routineId}/select`, {
+      method: 'POST',
+    }),
+}
+
 // ==================== HELPERS ====================
 
 export const isAuthenticated = () => !!localStorage.getItem('auth_token')
