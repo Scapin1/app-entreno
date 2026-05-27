@@ -14,6 +14,11 @@ from app.models import User, Profile, TrainingDay, WorkoutSession, ExerciseResul
 # this is the Alembic Config object
 config = context.config
 
+# Prefer DATABASE_URL from environment (e.g. Hugging Face / Supabase)
+db_url = os.getenv("DATABASE_URL")
+if db_url:
+    config.set_main_option("sqlalchemy.url", db_url)
+
 # Interpret the config file for Python logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
