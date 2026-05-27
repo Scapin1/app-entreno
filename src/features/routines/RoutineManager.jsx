@@ -23,6 +23,24 @@ const RoutineManager = ({ onBack, onNavigate }) => {
   const [newRoutineName, setNewRoutineName] = useState('')
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
 
+  const loadRoutines = async () => {
+    if (!profile?.id) return
+    setLoading(true)
+    setError('')
+    try {
+      const data = await routinesAPI.list(profile.id)
+      setRoutines(Array.isArray(data) ? data : [])
+    } catch (e) {
+      setError('No se pudieron cargar las rutinas')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadRoutines()
+  }, [profile?.id])
+
   const handleEditRoutine = (routineId) => {
     setEditingRoutineId(routineId)
     setView('edit-routine')
@@ -66,24 +84,6 @@ const RoutineManager = ({ onBack, onNavigate }) => {
       />
     )
   }
-
-  const loadRoutines = async () => {
-    if (!profile?.id) return
-    setLoading(true)
-    setError('')
-    try {
-      const data = await routinesAPI.list(profile.id)
-      setRoutines(Array.isArray(data) ? data : [])
-    } catch (e) {
-      setError('No se pudieron cargar las rutinas')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadRoutines()
-  }, [profile?.id])
 
   const handleCreate = async () => {
     if (!profile?.id || !newRoutineName.trim()) return
