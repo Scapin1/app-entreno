@@ -371,9 +371,10 @@ const SessionController = ({ day, onBack }) => {
       elapsedTime,
       weight,
       reps,
+      backendSessionId,
       updatedAt: Date.now(),
     })
-  }, [currentSessionKey, day, profile, currentBlockIndex, currentExerciseIndex, currentSetIndex, elapsedTime, weight, reps, sessionComplete])
+  }, [currentSessionKey, day, profile, currentBlockIndex, currentExerciseIndex, currentSetIndex, elapsedTime, weight, reps, backendSessionId, sessionComplete])
 
   useEffect(() => {
     let cancelled = false
@@ -547,8 +548,8 @@ const SessionController = ({ day, onBack }) => {
         feeling,
         duration: logConfig.base.duration,
         note,
-      }).catch(() => {
-        // fallback local only
+      }).catch(err => {
+        console.warn('[Session]', err.message)
       })
     }
   }
@@ -678,8 +679,8 @@ const SessionController = ({ day, onBack }) => {
     })
 
     if (profile?.id && backendSessionId) {
-      sessionsAPI.complete(profile.id, backendSessionId, elapsedTime).catch(() => {
-        // fallback local only
+      sessionsAPI.complete(profile.id, backendSessionId, { total_duration: elapsedTime, is_completed: false }).catch(err => {
+        console.warn('[Session]', err.message)
       })
     }
     setSessionComplete(true)
@@ -691,6 +692,23 @@ const SessionController = ({ day, onBack }) => {
     setSubTimerRemaining(0)
     setIsSubTimerRunning(false)
     setSubResistanceCompleted(false)
+    onBack?.()
+  }
+
+  const handleExitSession = () => {
+    clearCurrentSession()
+    saveWorkoutSession({
+      dayId: day?.id,
+      profileId: profile?.id,
+      status: 'exited',
+      totalDuration: elapsedTime,
+    })
+
+    if (profile?.id && backendSessionId) {
+      sessionsAPI.complete(profile.id, backendSessionId, { total_duration: elapsedTime, is_completed: false }).catch(err => {
+        console.warn('[Session]', err.message)
+      })
+    }
     onBack?.()
   }
 
@@ -719,8 +737,8 @@ const SessionController = ({ day, onBack }) => {
     })
 
     if (profile?.id && backendSessionId) {
-      sessionsAPI.complete(profile.id, backendSessionId, elapsedTime).catch(() => {
-        // fallback local only
+      sessionsAPI.complete(profile.id, backendSessionId, { total_duration: elapsedTime, is_completed: true }).catch(err => {
+        console.warn('[Session]', err.message)
       })
     }
     setSubTimerRemaining(0)
@@ -1001,7 +1019,7 @@ const SessionController = ({ day, onBack }) => {
     <div style={{ minHeight: '100vh', backgroundColor: colors.background, fontFamily: typography.fontFamily.body }}>
       {/* Header */}
       <header style={styles.mobileHeader}>
-        <button onClick={onBack} style={styles.backButton}>
+        <button onClick={handleExitSession} style={styles.backButton}>
           <span className="material-symbols-outlined">close</span>
         </button>
         <ProgressCompact current={completedSets + 1} total={totalSets} />

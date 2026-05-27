@@ -130,10 +130,10 @@ export const sessionsAPI = {
   list: (profileId, limit = 30, offset = 0) =>
     apiCall(`/profiles/${profileId}/sessions?limit=${limit}&offset=${offset}`),
   
-  complete: (profileId, sessionId, duration) => 
-    apiCall(`/profiles/${profileId}/sessions/${sessionId}/complete`, {
+  complete: (profileId, sessionId, data) => 
+    apiCall(`/profiles/${profileId}/sessions/${sessionId}`, {
       method: 'PUT',
-      body: JSON.stringify({ total_duration: duration }),
+      body: JSON.stringify(data),
     }),
   
   addExerciseResult: (profileId, sessionId, data) => 

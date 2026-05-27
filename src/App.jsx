@@ -6,6 +6,8 @@ import ProfileSelector from './features/profile/ProfileSelector'
 import MainMenu from './features/menu/MainMenu'
 import TrainingPreview from './features/preview/TrainingPreview'
 import SessionController from './features/session/SessionController'
+import { sessionsAPI } from './utils/api'
+import { getCurrentSession } from './utils/storage'
 import Analytics from './features/analytics/Analytics'
 import Settings from './features/settings/Settings'
 
@@ -38,6 +40,14 @@ function AppContent() {
       if (screen === 'session') {
         const confirmed = window.confirm('¿Seguro querés salir? Se puede perder el progreso de la sesión actual.')
         if (!confirmed) return
+
+        const currentSession = getCurrentSession()
+        if (currentSession?.backendSessionId && currentSession?.profileId && currentSession?.elapsedTime != null) {
+          sessionsAPI.complete(currentSession.profileId, currentSession.backendSessionId, {
+            total_duration: currentSession.elapsedTime,
+            is_completed: false,
+          }).catch(err => console.warn('[API]', err.message))
+        }
       }
       setScreen('menu')
       setSelectedDay(null)
