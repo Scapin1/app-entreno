@@ -4,6 +4,7 @@ import { colors, typography, spacing, borderRadius, shadows } from '../../styles
 export const Sidebar = ({ profile, activeItem, onNavigate }) => {
   const navItems = [
     { id: 'days', icon: 'calendar_month', label: 'Días de Entreno' },
+    { id: 'routines', icon: 'tune', label: 'Rutinas' },
     { id: 'analytics', icon: 'dashboard', label: 'Dashboard' },
     { id: 'settings', icon: 'settings', label: 'Settings' },
   ]
@@ -50,6 +51,7 @@ export const Sidebar = ({ profile, activeItem, onNavigate }) => {
 
 export const BottomNav = ({ activeItem, onNavigate }) => {
   const navItems = [
+    { id: 'routines', icon: 'tune', label: 'Rutinas' },
     { id: 'analytics', icon: 'dashboard', label: 'Dashboard' },
     { id: 'days', icon: 'calendar_month', label: 'Entreno' },
     { id: 'settings', icon: 'settings', label: 'Settings' },
