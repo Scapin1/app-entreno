@@ -27,16 +27,6 @@ const TrainingPreview = ({ day, routineId, onStart, onBack, onNavigate }) => {
     load()
     return () => { cancelled = true }
   }, [routineId, profile?.id])
-  
-  if (!day) return null
-
-  // Extraer el nombre del día (quitar "Día X: ")
-  const dayName = day.title.replace(/Día \d+: /, '')
-  
-  // Fallback: estimado base (aprox 5 min por ejercicio)
-  const mainBlock = day.blocks.find(b => b.name.toLowerCase().includes('principal') || b.name.toLowerCase().includes('fase'))
-  const exerciseCount = mainBlock?.exercises?.length || 0
-  const baseEstimatedTime = exerciseCount * 5
 
   useEffect(() => {
     let cancelled = false
@@ -58,6 +48,18 @@ const TrainingPreview = ({ day, routineId, onStart, onBack, onNavigate }) => {
     }
   }, [profile?.id, day?.id])
 
+  // Fallback: estimado base (aprox 5 min por ejercicio)
+  const baseEstimatedTime = useMemo(() => {
+    if (!day?.blocks?.length) return 0
+    const mainBlock = day.blocks.find(
+      (b) =>
+        String(b?.name || '').toLowerCase().includes('principal') ||
+        String(b?.name || '').toLowerCase().includes('fase')
+    )
+    const exerciseCount = mainBlock?.exercises?.length || 0
+    return exerciseCount * 5
+  }, [day])
+
   const estimatedTime = useMemo(() => {
     const dynamic = Number(dayInsights?.estimated_duration_minutes || 0)
     if (dynamic > 0) return dynamic
@@ -69,6 +71,11 @@ const TrainingPreview = ({ day, routineId, onStart, onBack, onNavigate }) => {
     const label = dayInsights?.difficulty_label || 'Media'
     return { level: Math.max(1, Math.min(4, level)), label }
   }, [dayInsights])
+
+  if (!day) return null
+
+  // Extraer el nombre del día (quitar "Día X: ")
+  const dayName = day.title.replace(/Día \d+: /, '')
 
   const formatDuration = (totalSecs = 0) => {
     const mins = Math.floor(totalSecs / 60)
