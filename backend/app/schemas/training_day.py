@@ -6,6 +6,7 @@ import json
 class DayCreate(BaseModel):
     day_number: int
     title: str
+    type: Optional[str] = None
     focus: Optional[str] = None
     implements: Optional[List[str]] = None
     blocks: Optional[List[dict]] = None  # Stored as JSON
@@ -14,6 +15,7 @@ class DayCreate(BaseModel):
 
 class DayUpdate(BaseModel):
     title: Optional[str] = None
+    type: Optional[str] = None
     focus: Optional[str] = None
     implements: Optional[List[str]] = None
     blocks: Optional[List[dict]] = None
@@ -26,6 +28,7 @@ class DayResponse(BaseModel):
     profile_id: int
     day_number: int
     title: str
+    type: Optional[str] = None
     focus: Optional[str] = None
     implements: Optional[List[str]] = None
     blocks: Optional[List[Any]] = None

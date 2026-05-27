@@ -166,6 +166,13 @@ def delete_routine(
 
     routine.is_active = 0
     routine.is_selected = 0
+
+    # Soft-delete all training days associated with this routine
+    db.query(TrainingDay).filter(
+        TrainingDay.routine_id == routine_id,
+        TrainingDay.is_active == 1
+    ).update({"is_active": 0})
+
     db.commit()
     return None
 

@@ -44,6 +44,7 @@ class TrainingDay(Base):
     routine_id = Column(Integer, ForeignKey("routines.id"), nullable=True)
     day_number = Column(Integer, nullable=False)
     title = Column(String(255), nullable=False)
+    type = Column(String(50), nullable=True)  # strength, hypertrophy, endurance, cardio, recovery
     focus = Column(String(255), nullable=True)
     implements = Column(String, nullable=True)  # Stored as JSON string
     blocks = Column(String, nullable=True)  # Stored as JSON string

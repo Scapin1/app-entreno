@@ -113,6 +113,7 @@ def create_training_day(
         routine_id=routine_id,
         day_number=day_data.day_number,
         title=day_data.title,
+        type=day_data.type,
         focus=day_data.focus,
         implements=implements_json,
         blocks=blocks_json,
@@ -196,6 +197,8 @@ def update_training_day(
     
     if day_data.title is not None:
         day.title = day_data.title
+    if day_data.type is not None:
+        day.type = day_data.type
     if day_data.focus is not None:
         day.focus = day_data.focus
     if day_data.implements is not None:
