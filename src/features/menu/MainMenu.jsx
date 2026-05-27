@@ -101,7 +101,9 @@ const MainMenu = ({ onSelectDay, onNavigate }) => {
                     <span>{totalExercises} ejercicios</span>
                   </div>
                   <div style={styles.implementsRow}>
-                    {day.implements.slice(0, 3).map((item, i) => (<span key={i} style={styles.implementChip}>{item}</span>))}
+                    {(Array.isArray(day.implements) ? day.implements : []).slice(0, 3).map((item, i) => (
+                      <span key={i} style={styles.implementChip}>{item}</span>
+                    ))}
                   </div>
                   <div style={styles.arrow}><span className="material-symbols-outlined" style={{ fontSize: '24px' }}>arrow_forward</span></div>
                 </button>
