@@ -37,6 +37,7 @@ jobs:
         run: |
           rsync -a --delete \
             --exclude '.git/' \
+            --exclude 'README.md' \
             backend/ /tmp/hf-space/
 
       - name: Commit and push if changed
