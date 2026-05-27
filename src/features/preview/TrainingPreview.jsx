@@ -60,6 +60,18 @@ const TrainingPreview = ({ day, routineId, onStart, onBack, onNavigate }) => {
     return exerciseCount * 5
   }, [day])
 
+  const exerciseCount = useMemo(() => {
+    if (!day?.blocks?.length) return 0
+
+    // Nested format: blocks[].exercises[]
+    if (Array.isArray(day.blocks[0]?.exercises)) {
+      return day.blocks.reduce((sum, block) => sum + (block?.exercises?.length || 0), 0)
+    }
+
+    // Flat format: blocks[] are exercises
+    return Array.isArray(day.blocks) ? day.blocks.length : 0
+  }, [day])
+
   const estimatedTime = useMemo(() => {
     const dynamic = Number(dayInsights?.estimated_duration_minutes || 0)
     if (dynamic > 0) return dynamic
