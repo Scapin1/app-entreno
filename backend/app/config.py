@@ -1,7 +1,6 @@
-from typing import Annotated, List
+from typing import List
 
-from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict, NoDecode
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 
@@ -10,7 +9,9 @@ class Settings(BaseSettings):
     APP_NAME: str = "GymTracker API"
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
-    CORS_ORIGINS: Annotated[List[str], NoDecode] = []
+    # Comma-separated list of origins (e.g. "https://a.com,https://b.com")
+    # Kept as string to avoid pydantic-settings JSON parsing differences across versions.
+    CORS_ORIGINS: str = ""
     
     # Database
     DATABASE_URL: str = ""
@@ -23,14 +24,10 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, value):
-        if value is None or value == "":
+    def cors_origins_list(self) -> List[str]:
+        if not self.CORS_ORIGINS:
             return []
-        if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
-        return value
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
 
 @lru_cache()
