@@ -4,16 +4,68 @@ import { colors, typography, borderRadius } from '../../styles/tokens'
 import { Sidebar, BottomNav } from '../../components/navigation'
 import { routinesAPI } from '../../utils/api'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
+import RoutineEditor from './RoutineEditor'
+import DayEditor from './DayEditor'
 
 const RoutineManager = ({ onBack, onNavigate }) => {
   const { profile } = useAuth()
   const { isDesktop } = useBreakpoint()
+
+  // Sub-screen navigation within the routines feature
+  const [view, setView] = useState('list') // 'list' | 'edit-routine' | 'edit-day'
+  const [editingRoutineId, setEditingRoutineId] = useState(null)
+  const [editingDay, setEditingDay] = useState(null)
+
   const [routines, setRoutines] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newRoutineName, setNewRoutineName] = useState('')
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
+
+  const handleEditRoutine = (routineId) => {
+    setEditingRoutineId(routineId)
+    setView('edit-routine')
+  }
+
+  const handleEditDay = (day) => {
+    setEditingDay(day)
+    setView('edit-day')
+  }
+
+  const handleBackFromRoutineEditor = () => {
+    setView('list')
+    setEditingRoutineId(null)
+  }
+
+  const handleBackFromDayEditor = () => {
+    setView('edit-routine')
+    setEditingDay(null)
+  }
+
+  // When view is not 'list', render sub-screens
+  if (view === 'edit-routine' && editingRoutineId && profile?.id) {
+    return (
+      <RoutineEditor
+        routineId={editingRoutineId}
+        profileId={profile.id}
+        onEditDay={handleEditDay}
+        onBack={handleBackFromRoutineEditor}
+        onNavigate={onNavigate}
+      />
+    )
+  }
+
+  if (view === 'edit-day' && editingDay && profile?.id) {
+    return (
+      <DayEditor
+        day={editingDay}
+        profileId={profile.id}
+        onBack={handleBackFromDayEditor}
+        onNavigate={onNavigate}
+      />
+    )
+  }
 
   const loadRoutines = async () => {
     if (!profile?.id) return
@@ -159,6 +211,10 @@ const RoutineManager = ({ onBack, onNavigate }) => {
                   </div>
 
                   <div style={styles.routineCardActions}>
+                    <button type="button" onClick={() => handleEditRoutine(routine.id)} style={styles.editRoutineButton} title="Editar rutina">
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
+                      Editar
+                    </button>
                     {routine.is_selected !== 1 && (
                       <button type="button" onClick={() => handleSelect(routine.id)} style={styles.selectButton} title="Seleccionar como activa">
                         <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>radio_button_unchecked</span>
@@ -276,6 +332,9 @@ const RoutineManager = ({ onBack, onNavigate }) => {
                       <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>check_circle</span>
                     </span>
                   )}
+                  <button type="button" onClick={() => handleEditRoutine(routine.id)} style={styles.mobileEditBtn} title="Editar rutina">
+                    <span className="material-symbols-outlined" style={{ fontSize: '20px', color: colors.onSurfaceVariant }}>edit</span>
+                  </button>
                   <button type="button" onClick={() => setDeleteConfirmId(routine.id)} style={styles.mobileDeleteBtn} title="Eliminar rutina">
                     <span className="material-symbols-outlined" style={{ fontSize: '20px', color: colors.error }}>delete</span>
                   </button>
@@ -343,6 +402,7 @@ const styles = {
   activeBadge: { fontSize: '0.65rem', fontWeight: 700, color: colors.onPrimaryFixed, backgroundColor: colors.primary, padding: '0.2rem 0.5rem', borderRadius: borderRadius.full, textTransform: 'uppercase', letterSpacing: '0.05em' },
   dayCount: { fontSize: '0.78rem', color: colors.onSurfaceVariant, fontWeight: 600, whiteSpace: 'nowrap' },
   routineCardActions: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 'auto', justifyContent: 'space-between' },
+  editRoutineButton: { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.surfaceContainerHigh, color: colors.onSurfaceVariant, padding: '0.35rem 0.65rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' },
   selectButton: { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', border: 'none', borderRadius: borderRadius.full, backgroundColor: colors.surfaceContainerHigh, color: colors.onSurfaceVariant, padding: '0.35rem 0.65rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' },
   selectedHint: { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', fontWeight: 700, color: colors.primary },
   deleteButton: { width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'transparent', border: 'none', color: colors.onSurfaceVariant, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 'auto' },
@@ -376,6 +436,7 @@ const styles = {
   mobileDayCount: { fontSize: '0.75rem', color: colors.onSurfaceVariant, fontWeight: 600 },
   mobileRoutineActions: { display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end' },
   mobileSelectBtn: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: colors.surfaceContainerHigh, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.onSurfaceVariant },
+  mobileEditBtn: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: colors.surfaceContainerHigh, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.onSurfaceVariant },
   mobileDeleteBtn: { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   mobileDeleteConfirm: { backgroundColor: colors.surfaceContainerHigh, borderRadius: borderRadius.md, padding: '0.75rem', marginTop: '0.25rem', border: `1px solid ${colors.error}` },
 }
