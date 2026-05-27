@@ -154,12 +154,6 @@ const ExerciseList = ({ exercises, onChange, phaseType = 'normal' }) => {
         </div>
       )}
 
-      {/* Add New Button (bottom) */}
-      <button type="button" onClick={handleAddNew} style={styles.addBottomButton}>
-        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
-        Agregar ejercicio
-      </button>
-
       {/* Exercise Editor Modal */}
       {editorOpen && (
         <ExerciseEditor
@@ -335,22 +329,6 @@ const styles = {
     fontWeight: 700,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
-  },
-  addBottomButton: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.3rem',
-    width: '100%',
-    border: `1px dashed ${colors.outlineVariant}`,
-    borderRadius: borderRadius.md,
-    backgroundColor: 'transparent',
-    color: colors.onSurfaceVariant,
-    padding: '0.6rem',
-    fontSize: '0.78rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-    marginTop: '0.5rem',
   },
 }
 
