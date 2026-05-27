@@ -248,6 +248,7 @@ def add_exercise_result(
         actual_weight=result_data.actual_weight,
         feeling=result_data.feeling,
         duration=result_data.duration,
+        note=result_data.note,
         timestamp=int(time.time())
     )
     db.add(result)

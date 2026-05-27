@@ -82,6 +82,7 @@ class ExerciseResult(Base):
     feeling = Column(String(20), nullable=True)  # easy, good, hard, failed
     duration = Column(Integer, nullable=True)  # seconds
     timestamp = Column(Integer, nullable=False)
+    note = Column(String(100), nullable=True)
     
     # Relationships
     session = relationship("WorkoutSession", back_populates="exercise_results")
@@ -95,6 +96,7 @@ class BodyWeight(Base):
     weight = Column(String(20), nullable=False)  # Stored as string to handle decimals
     date = Column(String(10), nullable=False)  # YYYY-MM-DD
     timestamp = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
     profile = relationship("Profile", back_populates="body_weights")
