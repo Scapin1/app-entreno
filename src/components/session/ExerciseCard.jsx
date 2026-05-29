@@ -8,6 +8,7 @@ export const ExerciseCard = ({
   totalSets,
   onSwap,
   children,
+  isCircuit,
 }) => {
   // Guard: si exercise es undefined, no renderizar
   if (!exercise) {
@@ -40,7 +41,7 @@ export const ExerciseCard = ({
         }}>
           {exercise.name}
         </h1>
-        {totalSets > 1 && (
+        {!isCircuit && totalSets > 1 && (
           <p style={{
             fontSize: '0.875rem',
             color: colors.onSurfaceVariant,

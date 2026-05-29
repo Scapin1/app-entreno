@@ -198,7 +198,7 @@ const SessionController = ({ day, onBack }) => {
   const hasManualSubTimer = currentExercise?.type === 'sets' && manualSubTimerSeconds > 0 && hybridRepsObjectiveText.length > 0
   const hybridRepsObjective = hasManualSubTimer ? hybridRepsObjectiveText : ''
   const secondaryTimerText = hasManualSubTimer ? getSecondaryTimerText(currentExercise) : ''
-  const currentExerciseSetCount = isCircuitBlock ? 1 : (currentExercise?.sets || 1)
+  const currentExerciseSetCount = isCircuitBlock ? circuitTotalRounds : (currentExercise?.sets || 1)
   const showWeightInput = currentExercise?.type === 'sets' && !hasManualSubTimer
   const currentSessionKey = `${day?.id || 'day'}-${profile?.id || 'profile'}`
   const isWorkoutFinished = sessionComplete || currentBlockIndex >= (day?.blocks?.length || 0)
@@ -947,6 +947,7 @@ const SessionController = ({ day, onBack }) => {
           setNumber={currentSetIndex + 1}
           totalSets={currentExerciseSetCount}
           onSwap={() => {}}
+          isCircuit={isCircuitBlock}
         >
           {hasManualSubTimer && (
             <div style={styles.secondaryTimerCard}>
@@ -1020,9 +1021,14 @@ const SessionController = ({ day, onBack }) => {
         <div style={styles.mobileExerciseCard}>
           <span style={styles.blockBadge}>{currentBlock?.name}</span>
           <h1 style={styles.mobileExerciseName}>{currentExercise.name}</h1>
-          {currentExerciseSetCount > 1 && (
+          {!isCircuitBlock && currentExerciseSetCount > 1 && (
             <p style={styles.mobileExerciseMeta}>
               Set {currentSetIndex + 1} of {currentExerciseSetCount}
+            </p>
+          )}
+          {isCircuitBlock && currentExerciseSetCount > 1 && (
+            <p style={styles.mobileExerciseMeta}>
+              Ronda {currentSetIndex + 1} of {currentExerciseSetCount}
             </p>
           )}
 
