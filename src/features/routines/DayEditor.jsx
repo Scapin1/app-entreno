@@ -97,7 +97,7 @@ const DayEditor = ({ day, onBack, onNavigate }) => {
               type: ex.type || 'strength',
               sets: typeof ex.sets === 'number' ? ex.sets : 0,
               reps: ex.reps ? String(ex.reps) : '',
-              rest: typeof ex.rest === 'number' ? ex.rest : 0,
+              ...(typeof ex.custom_timer === 'number' ? { custom_timer: ex.custom_timer } : {}),
               weight: ex.weight || '',
               config: ex.config || {},
               videoUrl: ex.videoUrl || '',
