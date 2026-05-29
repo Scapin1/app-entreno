@@ -568,7 +568,7 @@ const SessionController = ({ day, onBack }) => {
         : Number(currentBlock?.config?.micro_pause || 30)
     } else {
       restDuration = isLastSet
-        ? Number(currentExercise?.rest_exercise || currentBlock?.config?.macro_pause || 120)
+        ? Number(currentBlock?.config?.macro_pause || 120)
         : Number(currentExercise?.rest || currentBlock?.config?.micro_pause || 60)
     }
 
