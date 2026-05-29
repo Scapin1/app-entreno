@@ -1035,6 +1035,13 @@ const SessionController = ({ day, onBack }) => {
             Set {currentSetIndex + 1} of {currentExerciseSetCount}
           </p>
 
+          {/* Timer countdown for timer-based exercises (mobile) */}
+          {currentExercise?.type === 'timer' && (
+            <div style={styles.mobileTimerSection}>
+              <TimerDisplay mins={cdMins} secs={cdSecs} size="large" />
+            </div>
+          )}
+
           <div style={{
             display: 'grid',
             gridTemplateColumns: showWeightInput ? '1fr 1fr' : '1fr',
@@ -1327,6 +1334,12 @@ const styles = {
     fontWeight: 800,
     color: colors.onSurface,
     fontFamily: typography.fontFamily.heading,
+  },
+  mobileTimerSection: {
+    padding: '1rem 0',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   secondaryTimerCard: {
     width: '100%',
