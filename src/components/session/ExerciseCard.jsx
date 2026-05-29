@@ -40,19 +40,21 @@ export const ExerciseCard = ({
         }}>
           {exercise.name}
         </h1>
-        <p style={{
-          fontSize: '0.875rem',
-          color: colors.onSurfaceVariant,
-          marginTop: '0.5rem',
-        }}>
-          {exercise.type === 'timer'
-            ? `Interval ${setNumber} of ${totalSets} · ${Math.floor((exercise.value || 0) / 60)}:${((exercise.value || 0) % 60).toString().padStart(2, '0')} work`
-            : exercise.type === 'reps'
-              ? `Set ${setNumber} of ${totalSets} · Target: ${exercise.value || '-'} reps`
-              : exercise.type === 'manual'
-                ? `Set ${setNumber} of ${totalSets} · Guided movement`
-                : `Set ${setNumber} of ${totalSets} · Target: ${exercise.reps || 8}-${exercise.reps ? exercise.reps + 2 : 10} reps`}
-        </p>
+        {totalSets > 1 && (
+          <p style={{
+            fontSize: '0.875rem',
+            color: colors.onSurfaceVariant,
+            marginTop: '0.5rem',
+          }}>
+            {exercise.type === 'timer'
+              ? `Interval ${setNumber} of ${totalSets} · ${Math.floor((exercise.value || 0) / 60)}:${((exercise.value || 0) % 60).toString().padStart(2, '0')} work`
+              : exercise.type === 'reps'
+                ? `Set ${setNumber} of ${totalSets} · Target: ${exercise.value || '-'} reps`
+                : exercise.type === 'manual'
+                  ? `Set ${setNumber} of ${totalSets} · Guided movement`
+                  : `Set ${setNumber} of ${totalSets} · Target: ${exercise.reps || 8}-${exercise.reps ? exercise.reps + 2 : 10} reps`}
+          </p>
+        )}
       </div>
       {onSwap && (
         <button

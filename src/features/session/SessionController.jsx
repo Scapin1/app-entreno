@@ -198,7 +198,7 @@ const SessionController = ({ day, onBack }) => {
   const hasManualSubTimer = currentExercise?.type === 'sets' && manualSubTimerSeconds > 0 && hybridRepsObjectiveText.length > 0
   const hybridRepsObjective = hasManualSubTimer ? hybridRepsObjectiveText : ''
   const secondaryTimerText = hasManualSubTimer ? getSecondaryTimerText(currentExercise) : ''
-  const currentExerciseSetCount = isCircuitBlock ? circuitTotalRounds : (currentExercise?.sets || 1)
+  const currentExerciseSetCount = isCircuitBlock ? 1 : (currentExercise?.sets || 1)
   const showWeightInput = currentExercise?.type === 'sets' && !hasManualSubTimer
   const currentSessionKey = `${day?.id || 'day'}-${profile?.id || 'profile'}`
   const isWorkoutFinished = sessionComplete || currentBlockIndex >= (day?.blocks?.length || 0)
@@ -934,15 +934,10 @@ const SessionController = ({ day, onBack }) => {
             <ProgressPhases phases={phaseProgresses} currentPhaseIndex={currentBlockIndex} />
           </div>
           <div style={{ marginTop: '1rem', color: colors.onSurfaceVariant, fontSize: '0.875rem' }}>
-            <span>{getExerciseConfigLabel()}</span>
-            <span style={{ margin: '0 0.6rem', opacity: 0.4 }}>|</span>
-            <span>Sesión: {mins}:{secs}</span>
-            {hasTimer && (
-              <>
-                <span style={{ margin: '0 0.6rem', opacity: 0.4 }}>|</span>
-                <span>Restante: {formatTime(intervalRemaining).mins}:{formatTime(intervalRemaining).secs}</span>
-              </>
+            {!hasTimer && (
+              <><span>{getExerciseConfigLabel()}</span><span style={{ margin: '0 0.6rem', opacity: 0.4 }}>|</span></>
             )}
+            <span>Sesión: {mins}:{secs}</span>
           </div>
         </section>
 
@@ -953,19 +948,6 @@ const SessionController = ({ day, onBack }) => {
           totalSets={currentExerciseSetCount}
           onSwap={() => {}}
         >
-          {/* Planned target summary (non-editable) */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: showWeightInput ? '1fr 1fr' : '1fr',
-            gap: '0.75rem',
-            marginBottom: '1.25rem',
-          }}>
-            {showWeightInput && (
-              <div style={styles.targetChip}><span style={styles.targetLabel}>Peso plan</span><span style={styles.targetValue}>{currentExercise?.weight ?? '-'} kg</span></div>
-            )}
-            <div style={styles.targetChip}><span style={styles.targetLabel}>{hasTimer ? 'Tiempo plan' : 'Reps plan'}</span><span style={styles.targetValue}>{hasTimer ? `${formatTime(Number(currentExercise?.value || currentExercise?.custom_timer || currentBlock?.config?.work || 0)).mins}:${formatTime(Number(currentExercise?.value || currentExercise?.custom_timer || currentBlock?.config?.work || 0)).secs}` : (hasManualSubTimer ? hybridRepsObjective : (currentExercise?.reps ?? currentExercise?.value ?? '-'))}</span></div>
-          </div>
-
           {hasManualSubTimer && (
             <div style={styles.secondaryTimerCard}>
               <div style={styles.secondaryTimerHeader}>
@@ -1038,9 +1020,11 @@ const SessionController = ({ day, onBack }) => {
         <div style={styles.mobileExerciseCard}>
           <span style={styles.blockBadge}>{currentBlock?.name}</span>
           <h1 style={styles.mobileExerciseName}>{currentExercise.name}</h1>
-          <p style={styles.mobileExerciseMeta}>
-            Set {currentSetIndex + 1} of {currentExerciseSetCount}
-          </p>
+          {currentExerciseSetCount > 1 && (
+            <p style={styles.mobileExerciseMeta}>
+              Set {currentSetIndex + 1} of {currentExerciseSetCount}
+            </p>
+          )}
 
           {/* Timer countdown for exercises with timer (mobile) */}
           {hasTimer && (
@@ -1048,18 +1032,6 @@ const SessionController = ({ day, onBack }) => {
               <TimerDisplay mins={cdMins} secs={cdSecs} size="large" />
             </div>
           )}
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: showWeightInput ? '1fr 1fr' : '1fr',
-            gap: '0.75rem',
-            marginBottom: '1rem',
-          }}>
-            {showWeightInput && (
-              <div style={styles.targetChip}><span style={styles.targetLabel}>Peso plan</span><span style={styles.targetValue}>{currentExercise?.weight ?? '-'} kg</span></div>
-            )}
-            <div style={styles.targetChip}><span style={styles.targetLabel}>{hasTimer ? 'Tiempo plan' : 'Reps plan'}</span><span style={styles.targetValue}>{hasTimer ? `${formatTime(Number(currentExercise?.value || currentExercise?.custom_timer || currentBlock?.config?.work || 0)).mins}:${formatTime(Number(currentExercise?.value || currentExercise?.custom_timer || currentBlock?.config?.work || 0)).secs}` : (hasManualSubTimer ? hybridRepsObjective : (currentExercise?.reps ?? currentExercise?.value ?? '-'))}</span></div>
-          </div>
 
           {hasManualSubTimer && (
             <div style={styles.secondaryTimerCardMobile}>
@@ -1087,15 +1059,10 @@ const SessionController = ({ day, onBack }) => {
           )}
 
           <div style={{ marginBottom: '0.5rem', color: colors.onSurfaceVariant, fontSize: '0.75rem' }}>
-            <span>{getExerciseConfigLabel()}</span>
-            <span style={{ margin: '0 0.5rem', opacity: 0.4 }}>|</span>
-            <span>Ses: {mins}:{secs}</span>
-            {hasTimer && (
-              <>
-                <span style={{ margin: '0 0.5rem', opacity: 0.4 }}>|</span>
-                <span>Rest: {formatTime(intervalRemaining).mins}:{formatTime(intervalRemaining).secs}</span>
-              </>
+            {!hasTimer && (
+              <><span>{getExerciseConfigLabel()}</span><span style={{ margin: '0 0.5rem', opacity: 0.4 }}>|</span></>
             )}
+            <span>Sesión: {mins}:{secs}</span>
           </div>
 
           <CompleteSetButton
@@ -1120,7 +1087,7 @@ const SessionController = ({ day, onBack }) => {
         <button style={styles.navButton} disabled={currentExerciseIndex === 0 && currentBlockIndex === 0}>
           <span className="material-symbols-outlined">skip_previous</span>
         </button>
-        <span style={styles.blockCounter}>{currentSetIndex + 1}/{currentExerciseSetCount}</span>
+        <span style={styles.blockCounter}>{currentSetIndex + 1}/{Math.max(currentExerciseSetCount, 1)}</span>
         <button style={styles.navButton}>
           <span className="material-symbols-outlined">skip_next</span>
         </button>
