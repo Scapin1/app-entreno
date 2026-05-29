@@ -79,7 +79,6 @@ const ExerciseList = ({ exercises, onChange, phaseType = 'normal' }) => {
     if (hasSets && hasReps) parts.push(`${ex.sets} × ${ex.reps}`)
     else if (hasSets) parts.push(`${ex.sets} series`)
     else if (hasReps) parts.push(`${ex.reps} reps`)
-    if (ex.custom_timer > 0) parts.push(`Timer ${ex.custom_timer}s`)
     return parts.join(' · ')
   }
 
@@ -101,23 +100,25 @@ const ExerciseList = ({ exercises, onChange, phaseType = 'normal' }) => {
         </div>
       )}
 
-      {exercises.length > 0 && (
-        <div style={styles.list}>
-          {exercises.map((ex, idx) => {
-            const typeLabel = TYPE_LABELS[ex.type] || ex.type
-            const summary = getExerciseSummary(ex)
+          {exercises.length > 0 && (
+            <div style={styles.list}>
+              {exercises.map((ex, idx) => {
+                const typeLabel = TYPE_LABELS[ex.type] || ex.type
+                const summary = getExerciseSummary(ex)
+                const hasTimer = ex.custom_timer > 0
 
-            return (
-              <div key={idx} style={styles.item}>
-                <div style={styles.itemMain}>
-                  <div style={styles.itemInfo}>
-                    <div style={styles.itemNameRow}>
-                      <span style={styles.itemIndex}>{(idx + 1).toString().padStart(2, '0')}</span>
-                      <span style={styles.itemName}>{ex.name}</span>
-                      {typeLabel && <span style={styles.typeBadge}>{typeLabel}</span>}
-                    </div>
-                    {summary && <span style={styles.itemSummary}>{summary}</span>}
-                  </div>
+                return (
+                  <div key={idx} style={styles.item}>
+                    <div style={styles.itemMain}>
+                      <div style={styles.itemInfo}>
+                        <div style={styles.itemNameRow}>
+                          <span style={styles.itemIndex}>{(idx + 1).toString().padStart(2, '0')}</span>
+                          <span style={styles.itemName}>{ex.name}</span>
+                          {typeLabel && <span style={styles.typeBadge}>{typeLabel}</span>}
+                          {hasTimer && <span style={styles.timerBadge}>Timer {ex.custom_timer}s</span>}
+                        </div>
+                        {summary && <span style={styles.itemSummary}>{summary}</span>}
+                      </div>
 
                   <div style={styles.itemActions}>
                     <button
@@ -260,6 +261,15 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
     border: `1px solid ${colors.outlineVariant}`,
+  },
+  timerBadge: {
+    fontSize: '0.55rem',
+    fontWeight: 700,
+    color: colors.primary,
+    backgroundColor: `${colors.primary}20`,
+    padding: '0.15rem 0.4rem',
+    borderRadius: borderRadius.full,
+    letterSpacing: '0.05em',
   },
   itemSummary: {
     fontSize: '0.72rem',
