@@ -67,15 +67,20 @@ const ExerciseList = ({ exercises, onChange, phaseType = 'normal' }) => {
 
   const getExerciseSummary = (ex) => {
     if (phaseType === 'circuit') {
-      if (ex.value) return `${ex.value}s`
-      return ''
+      const parts = [
+        ...(ex.weight ? [ex.weight] : []),
+        ...(ex.implement ? [ex.implement] : []),
+      ]
+      return parts.join(' · ')
     }
+    const parts = []
     const hasSets = ex.sets && ex.sets > 0
     const hasReps = ex.reps && ex.reps.toString().trim()
-    if (hasSets && hasReps) return `${ex.sets} × ${ex.reps}`
-    if (hasSets) return `${ex.sets} series`
-    if (hasReps) return `${ex.reps} reps`
-    return ''
+    if (hasSets && hasReps) parts.push(`${ex.sets} × ${ex.reps}`)
+    else if (hasSets) parts.push(`${ex.sets} series`)
+    else if (hasReps) parts.push(`${ex.reps} reps`)
+    if (ex.custom_timer > 0) parts.push(`Timer ${ex.custom_timer}s`)
+    return parts.join(' · ')
   }
 
   return (
