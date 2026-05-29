@@ -133,10 +133,11 @@ const PhaseCard = ({ phase, onChange, onDelete, isOnly }) => {
       {/* Content */}
       {!collapsed && (
         <div style={styles.content}>
-          {/* Circuit config */}
-          {isCircuit && (
-            <div style={styles.configSection}>
-              <div style={styles.configGrid}>
+          {/* Rest config — shown for all phases */}
+          <div style={styles.configSection}>
+            <div style={styles.configGrid}>
+              {/* Circuit-specific fields */}
+              {isCircuit && (
                 <div style={styles.configField}>
                   <label style={styles.configLabel}>Trabajo (seg)</label>
                   <input
@@ -148,28 +149,30 @@ const PhaseCard = ({ phase, onChange, onDelete, isOnly }) => {
                     style={styles.configInput}
                   />
                 </div>
-                <div style={styles.configField}>
-                  <label style={styles.configLabel}>Micro pausa (seg)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="300"
-                    value={cfg.micro_pause ?? 30}
-                    onChange={(e) => handleConfigChange('micro_pause', e.target.value)}
-                    style={styles.configInput}
-                  />
-                </div>
-                <div style={styles.configField}>
-                  <label style={styles.configLabel}>Macro pausa (seg)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="600"
-                    value={cfg.macro_pause ?? 120}
-                    onChange={(e) => handleConfigChange('macro_pause', e.target.value)}
-                    style={styles.configInput}
-                  />
-                </div>
+              )}
+              <div style={styles.configField}>
+                <label style={styles.configLabel}>Descanso entre series (seg)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="300"
+                  value={cfg.micro_pause ?? 60}
+                  onChange={(e) => handleConfigChange('micro_pause', e.target.value)}
+                  style={styles.configInput}
+                />
+              </div>
+              <div style={styles.configField}>
+                <label style={styles.configLabel}>Descanso entre ejercicios (seg)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="600"
+                  value={cfg.macro_pause ?? 120}
+                  onChange={(e) => handleConfigChange('macro_pause', e.target.value)}
+                  style={styles.configInput}
+                />
+              </div>
+              {isCircuit && (
                 <div style={styles.configField}>
                   <label style={styles.configLabel}>Rondas</label>
                   <input
@@ -181,9 +184,9 @@ const PhaseCard = ({ phase, onChange, onDelete, isOnly }) => {
                     style={styles.configInput}
                   />
                 </div>
-              </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Exercise list */}
           <ExerciseList
