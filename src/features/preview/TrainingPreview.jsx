@@ -123,6 +123,11 @@ const TrainingPreview = ({ day, routineId, onStart, onBack, onNavigate }) => {
       repsVal = 'manual'
     }
 
+    // Append custom_timer to reps/tiempo column for non-circuit exercises
+    if (ex.custom_timer > 0 && block.type !== 'circuit') {
+      repsVal += ` · ${ex.custom_timer}s`
+    }
+
     return { setsVal, repsVal, weight }
   }
 
