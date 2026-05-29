@@ -86,8 +86,6 @@ const DayEditor = ({ day, onBack, onNavigate }) => {
               return {
                 name: ex.name,
                 type: 'timer',
-                value: Number(ex.value) || 0,
-                rest_after: typeof ex.rest_after === 'number' ? ex.rest_after : 0,
                 ...(ex.weight ? { weight: ex.weight } : {}),
                 ...(ex.implement ? { implement: ex.implement } : {}),
               }

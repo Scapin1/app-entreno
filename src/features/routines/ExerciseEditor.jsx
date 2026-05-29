@@ -20,8 +20,6 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
   const [weight, setWeight] = useState(exercise?.weight ?? '')
 
   // Circuit-specific fields
-  const [duration, setDuration] = useState(exercise?.value ?? 45)
-  const [restAfter, setRestAfter] = useState(exercise?.rest_after ?? 0)
   const [implement, setImplement] = useState(exercise?.implement ?? '')
 
   // Normal-specific fields
@@ -46,16 +44,9 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
     }
 
     if (isCircuit) {
-      if (!duration || Number(duration) <= 0) {
-        setError('La duración es obligatoria')
-        return
-      }
-
       const exerciseData = {
         name: name.trim(),
         type: 'timer',
-        value: Number(duration),
-        rest_after: Number(restAfter) || 0,
         ...(weight.trim() ? { weight: weight.trim() } : {}),
         ...(implement.trim() ? { implement: implement.trim() } : {}),
       }
@@ -118,32 +109,6 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
                   placeholder="Ej: Sentadilla con salto"
                   style={styles.input}
                   autoFocus
-                />
-              </div>
-
-              {/* Duration */}
-              <div style={styles.field}>
-                <label style={styles.label}>Duración (seg) *</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="600"
-                  value={duration}
-                  onChange={(e) => { setDuration(e.target.value); setError('') }}
-                  style={styles.input}
-                />
-              </div>
-
-              {/* Rest after */}
-              <div style={styles.field}>
-                <label style={styles.label}>Pausa post-ejercicio (seg)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="600"
-                  value={restAfter}
-                  onChange={(e) => setRestAfter(e.target.value)}
-                  style={styles.input}
                 />
               </div>
 
