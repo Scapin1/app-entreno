@@ -70,7 +70,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
       config = JSON.parse(configText)
       if (typeof config !== 'object' || config === null) throw new Error()
     } catch {
-      setError('Config debe ser un JSON válido (ej: {"intensity": "media"})')
+      setError('Config debe ser un JSON válido (ej: {"sets": 4, "reps": 10})')
       return
     }
 
@@ -263,7 +263,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
                 onChange={(e) => setConfigText(e.target.value)}
                 style={styles.textarea}
                 rows={3}
-                placeholder='{"intensity": "media", "rpe": 7}'
+                placeholder={`{\n  "intensity": "media",\n  "rpe": 7,\n  "notes": "opcional"\n}`}
               />
             </div>
 
