@@ -159,8 +159,9 @@ def get_exercise_actual_progress(
     """
     Get REAL performance progression for one exercise based on actual form responses
     (actual_reps / actual_weight), ordered chronologically.
+    Includes planned_reps from the routine plan (TrainingDay.blocks JSON).
     """
-    from app.models import WorkoutSession, ExerciseResult
+    from app.models import WorkoutSession, ExerciseResult, TrainingDay
 
     query = db.query(
         ExerciseResult.id.label("result_id"),
@@ -173,6 +174,7 @@ def get_exercise_actual_progress(
         WorkoutSession.id.label("session_id"),
         WorkoutSession.date.label("session_date"),
         WorkoutSession.timestamp.label("session_timestamp"),
+        WorkoutSession.day_id,
     ).join(
         WorkoutSession,
         ExerciseResult.session_id == WorkoutSession.id,
@@ -198,6 +200,34 @@ def get_exercise_actual_progress(
 
     ordered = list(reversed(rows))
 
+    # Build plan_reps lookup from TrainingDay blocks
+    # Maps (day_id, exercise_name) -> planned_reps
+    plan_reps_lookup = {}
+    day_ids = {row.day_id for row in ordered if row.day_id is not None}
+    if day_ids:
+        days = db.query(TrainingDay).filter(TrainingDay.id.in_(day_ids)).all()
+        for day in days:
+            if not day.blocks:
+                continue
+            try:
+                blocks = json.loads(day.blocks) if isinstance(day.blocks, str) else day.blocks
+            except Exception:
+                continue
+            if not isinstance(blocks, list):
+                continue
+            for block in blocks:
+                exercises = block.get("exercises", []) if isinstance(block, dict) else []
+                for ex in exercises:
+                    if not isinstance(ex, dict):
+                        continue
+                    ename = ex.get("name", "").strip().lower()
+                    reps = ex.get("reps")
+                    if ename and reps is not None:
+                        key = (day.id, ename)
+                        # Keep first occurrence (earliest block wins, typically principal)
+                        if key not in plan_reps_lookup:
+                            plan_reps_lookup[key] = reps
+
     points = []
     for row in ordered:
         weight_value = None
@@ -207,6 +237,12 @@ def get_exercise_actual_progress(
             except Exception:
                 weight_value = None
 
+        # Look up planned_reps
+        planned_reps = None
+        if row.day_id is not None:
+            key = (row.day_id, (exercise_name or "").strip().lower())
+            planned_reps = plan_reps_lookup.get(key)
+
         points.append({
             "session_date": row.session_date,
             "session_id": row.session_id,
@@ -214,6 +250,7 @@ def get_exercise_actual_progress(
             "actual_reps": row.actual_reps,
             "actual_weight": weight_value,
             "feeling": row.feeling,
+            "planned_reps": planned_reps,
             "timestamp": row.result_timestamp,
         })
 

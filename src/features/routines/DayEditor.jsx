@@ -98,6 +98,7 @@ const DayEditor = ({ day, onBack, onNavigate }) => {
               sets: typeof ex.sets === 'number' ? ex.sets : 0,
               reps: ex.reps ? String(ex.reps) : '',
               rest: typeof ex.rest === 'number' ? ex.rest : 0,
+              rest_exercise: typeof ex.rest_exercise === 'number' ? ex.rest_exercise : 0,
               weight: ex.weight || '',
               config: ex.config || {},
               videoUrl: ex.videoUrl || '',

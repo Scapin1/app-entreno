@@ -560,19 +560,16 @@ const SessionController = ({ day, onBack }) => {
 
     const isLastSet = currentSetIndex >= currentExerciseSetCount - 1
     const isLastExerciseInCircuitRound = isCircuitBlock && currentExerciseIndex >= (currentBlock?.exercises?.length || 0) - 1
-    const isMainPhase = /principal/i.test(currentBlock?.name || '')
 
     let restDuration = 0
-    if (isMainPhase) {
-      if (isCircuitBlock) {
-        restDuration = isLastExerciseInCircuitRound
-          ? Number(currentBlock?.config?.macro_pause || 120)
-          : Number(currentBlock?.config?.micro_pause || 30)
-      } else {
-        restDuration = isLastSet
-          ? Number(currentBlock?.config?.macro_pause || 120)
-          : Number(currentBlock?.config?.micro_pause || 60)
-      }
+    if (isCircuitBlock) {
+      restDuration = isLastExerciseInCircuitRound
+        ? Number(currentBlock?.config?.macro_pause || 120)
+        : Number(currentBlock?.config?.micro_pause || 30)
+    } else {
+      restDuration = isLastSet
+        ? Number(currentExercise?.rest_exercise || currentBlock?.config?.macro_pause || 120)
+        : Number(currentExercise?.rest || currentBlock?.config?.micro_pause || 60)
     }
 
     if (isCircuitBlock) {
@@ -627,7 +624,7 @@ const SessionController = ({ day, onBack }) => {
       defaultResistanceCompleted: hasManualSubTimer ? subResistanceCompleted : false,
     }
 
-    if (restDuration > 0 && isMainPhase) {
+    if (restDuration > 0) {
       setPendingLog(pending)
     } else {
       persistSetLog(pending, {

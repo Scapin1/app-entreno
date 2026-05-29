@@ -29,6 +29,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
   const [sets, setSets] = useState(exercise?.sets ?? 4)
   const [reps, setReps] = useState(exercise?.reps ?? '')
   const [rest, setRest] = useState(exercise?.rest ?? 60)
+  const [restExercise, setRestExercise] = useState(exercise?.rest_exercise ?? 0)
   const [videoUrl, setVideoUrl] = useState(exercise?.videoUrl ?? '')
   const [notes, setNotes] = useState(exercise?.notes ?? '')
   const [configText, setConfigText] = useState(
@@ -79,6 +80,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
       sets: showSetsFields ? Number(sets) || 0 : 0,
       reps: showSetsFields ? reps.trim() : '',
       rest: Number(rest) || 0,
+      rest_exercise: Number(restExercise) || 0,
       weight: weight.trim(),
       config,
       videoUrl: videoUrl.trim(),
@@ -227,15 +229,28 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
                 </div>
               )}
 
-              {/* Rest */}
+              {/* Rest between sets */}
               <div style={styles.field}>
-                <label style={styles.label}>Descanso (seg)</label>
+                <label style={styles.label}>Descanso entre series (seg)</label>
                 <input
                   type="number"
                   min="0"
                   max="600"
                   value={rest}
                   onChange={(e) => setRest(e.target.value)}
+                  style={styles.input}
+                />
+              </div>
+
+              {/* Rest after exercise */}
+              <div style={styles.field}>
+                <label style={styles.label}>Descanso entre ejercicios (seg)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="600"
+                  value={restExercise}
+                  onChange={(e) => setRestExercise(e.target.value)}
                   style={styles.input}
                 />
               </div>
