@@ -569,7 +569,7 @@ const SessionController = ({ day, onBack }) => {
     } else {
       restDuration = isLastSet
         ? Number(currentBlock?.config?.macro_pause || 120)
-        : Number(currentExercise?.rest || currentBlock?.config?.micro_pause || 60)
+        : Number(currentBlock?.config?.micro_pause || 60)
     }
 
     if (isCircuitBlock) {
@@ -583,7 +583,7 @@ const SessionController = ({ day, onBack }) => {
       setRestInitialTime(restDuration)
     }
 
-    if (!fromTimerAuto && currentExercise?.type === 'timer') {
+    if (!fromTimerAuto && (currentExercise?.type === 'timer' || currentExercise?.custom_timer > 0)) {
       setIsIntervalRunning(false)
       setIntervalRemaining(0)
     }
@@ -652,8 +652,9 @@ const SessionController = ({ day, onBack }) => {
   }
 
   const handleStartInterval = () => {
-    if (currentExercise?.type !== 'timer') return
-    const workSeconds = Number(currentExercise?.value || currentBlock?.config?.work || 0)
+    const hasTimer = currentExercise?.type === 'timer' || currentExercise?.custom_timer > 0
+    if (!hasTimer) return
+    const workSeconds = Number(currentExercise?.value || currentExercise?.custom_timer || currentBlock?.config?.work || 0)
     if (workSeconds <= 0) return
     lastWarningSecondRef.current = null
     setIntervalRemaining(workSeconds)
@@ -756,8 +757,8 @@ const SessionController = ({ day, onBack }) => {
 
   const getExerciseConfigLabel = () => {
     if (!currentExercise) return ''
-    if (currentExercise.type === 'timer') {
-      const target = Number(currentExercise.value || currentBlock?.config?.work || 0)
+    if (currentExercise.type === 'timer' || currentExercise.custom_timer > 0) {
+      const target = Number(currentExercise.value || currentExercise.custom_timer || currentBlock?.config?.work || 0)
       return `Objetivo: ${formatTime(target).mins}:${formatTime(target).secs}`
     }
     if (currentExercise.type === 'reps') {
@@ -773,10 +774,11 @@ const SessionController = ({ day, onBack }) => {
   }
 
   const getPrimaryActionLabel = () => {
+    const _hasTimer = currentExercise?.type === 'timer' || currentExercise?.custom_timer > 0
     if (currentBlock?.type === 'circuit' && currentExercise?.type === 'timer') {
       return 'Automático'
     }
-    if (currentExercise?.type === 'timer') {
+    if (_hasTimer) {
       return isIntervalRunning ? 'Complete Interval' : 'Start Interval'
     }
     if (hasManualSubTimer) return 'Completar reps'
@@ -790,11 +792,15 @@ const SessionController = ({ day, onBack }) => {
     if (currentExercise.type === 'timer') {
       return Number(currentExercise.value || currentBlock?.config?.work || 0)
     }
+    if (currentExercise.custom_timer > 0) {
+      return Number(currentExercise.custom_timer)
+    }
     return 0
   }
 
   const handlePrimaryAction = () => {
-    if (currentExercise?.type === 'timer' && !isIntervalRunning) {
+    const hasTimer = currentExercise?.type === 'timer' || currentExercise?.custom_timer > 0
+    if (hasTimer && !isIntervalRunning) {
       handleStartInterval()
       return
     }
@@ -870,7 +876,8 @@ const SessionController = ({ day, onBack }) => {
   const { mins, secs } = formatTime(elapsedTime)
   const { mins: exMins, secs: exSecs } = formatTime(exerciseElapsedTime)
   const targetSeconds = getCurrentExerciseTargetSeconds()
-  const exerciseCountdown = currentExercise?.type === 'timer'
+  const hasTimer = currentExercise?.type === 'timer' || currentExercise?.custom_timer > 0
+  const exerciseCountdown = hasTimer
     ? (isIntervalRunning ? intervalRemaining : targetSeconds)
     : 0
   const { mins: cdMins, secs: cdSecs } = formatTime(exerciseCountdown)
@@ -917,7 +924,7 @@ const SessionController = ({ day, onBack }) => {
       <main style={styles.desktopMain}>
         {/* Timer Section */}
         <section style={styles.timerSection}>
-          {currentExercise?.type === 'timer' && (
+          {hasTimer && (
             <>
               <ElapsedLabel label="Tiempo ejercicio (cuenta regresiva)" />
               <TimerDisplay mins={cdMins} secs={cdSecs} size="large" />
@@ -930,7 +937,7 @@ const SessionController = ({ day, onBack }) => {
             <span>{getExerciseConfigLabel()}</span>
             <span style={{ margin: '0 0.6rem', opacity: 0.4 }}>|</span>
             <span>Sesión: {mins}:{secs}</span>
-            {currentExercise?.type === 'timer' && (
+            {hasTimer && (
               <>
                 <span style={{ margin: '0 0.6rem', opacity: 0.4 }}>|</span>
                 <span>Restante: {formatTime(intervalRemaining).mins}:{formatTime(intervalRemaining).secs}</span>
@@ -956,7 +963,7 @@ const SessionController = ({ day, onBack }) => {
             {showWeightInput && (
               <div style={styles.targetChip}><span style={styles.targetLabel}>Peso plan</span><span style={styles.targetValue}>{currentExercise?.weight ?? '-'} kg</span></div>
             )}
-            <div style={styles.targetChip}><span style={styles.targetLabel}>{currentExercise?.type === 'timer' ? 'Tiempo plan' : 'Reps plan'}</span><span style={styles.targetValue}>{currentExercise?.type === 'timer' ? `${formatTime(Number(currentExercise?.value || currentBlock?.config?.work || 0)).mins}:${formatTime(Number(currentExercise?.value || currentBlock?.config?.work || 0)).secs}` : (hasManualSubTimer ? hybridRepsObjective : (currentExercise?.reps ?? currentExercise?.value ?? '-'))}</span></div>
+            <div style={styles.targetChip}><span style={styles.targetLabel}>{hasTimer ? 'Tiempo plan' : 'Reps plan'}</span><span style={styles.targetValue}>{hasTimer ? `${formatTime(Number(currentExercise?.value || currentExercise?.custom_timer || currentBlock?.config?.work || 0)).mins}:${formatTime(Number(currentExercise?.value || currentExercise?.custom_timer || currentBlock?.config?.work || 0)).secs}` : (hasManualSubTimer ? hybridRepsObjective : (currentExercise?.reps ?? currentExercise?.value ?? '-'))}</span></div>
           </div>
 
           {hasManualSubTimer && (
@@ -1035,8 +1042,8 @@ const SessionController = ({ day, onBack }) => {
             Set {currentSetIndex + 1} of {currentExerciseSetCount}
           </p>
 
-          {/* Timer countdown for timer-based exercises (mobile) */}
-          {currentExercise?.type === 'timer' && (
+          {/* Timer countdown for exercises with timer (mobile) */}
+          {hasTimer && (
             <div style={styles.mobileTimerSection}>
               <TimerDisplay mins={cdMins} secs={cdSecs} size="large" />
             </div>
@@ -1051,7 +1058,7 @@ const SessionController = ({ day, onBack }) => {
             {showWeightInput && (
               <div style={styles.targetChip}><span style={styles.targetLabel}>Peso plan</span><span style={styles.targetValue}>{currentExercise?.weight ?? '-'} kg</span></div>
             )}
-            <div style={styles.targetChip}><span style={styles.targetLabel}>{currentExercise?.type === 'timer' ? 'Tiempo plan' : 'Reps plan'}</span><span style={styles.targetValue}>{currentExercise?.type === 'timer' ? `${formatTime(Number(currentExercise?.value || currentBlock?.config?.work || 0)).mins}:${formatTime(Number(currentExercise?.value || currentBlock?.config?.work || 0)).secs}` : (hasManualSubTimer ? hybridRepsObjective : (currentExercise?.reps ?? currentExercise?.value ?? '-'))}</span></div>
+            <div style={styles.targetChip}><span style={styles.targetLabel}>{hasTimer ? 'Tiempo plan' : 'Reps plan'}</span><span style={styles.targetValue}>{hasTimer ? `${formatTime(Number(currentExercise?.value || currentExercise?.custom_timer || currentBlock?.config?.work || 0)).mins}:${formatTime(Number(currentExercise?.value || currentExercise?.custom_timer || currentBlock?.config?.work || 0)).secs}` : (hasManualSubTimer ? hybridRepsObjective : (currentExercise?.reps ?? currentExercise?.value ?? '-'))}</span></div>
           </div>
 
           {hasManualSubTimer && (
@@ -1083,7 +1090,7 @@ const SessionController = ({ day, onBack }) => {
             <span>{getExerciseConfigLabel()}</span>
             <span style={{ margin: '0 0.5rem', opacity: 0.4 }}>|</span>
             <span>Ses: {mins}:{secs}</span>
-            {currentExercise?.type === 'timer' && (
+            {hasTimer && (
               <>
                 <span style={{ margin: '0 0.5rem', opacity: 0.4 }}>|</span>
                 <span>Rest: {formatTime(intervalRemaining).mins}:{formatTime(intervalRemaining).secs}</span>

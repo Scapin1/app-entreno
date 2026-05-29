@@ -28,7 +28,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
   const [type, setType] = useState(exercise?.type || 'strength')
   const [sets, setSets] = useState(exercise?.sets ?? 4)
   const [reps, setReps] = useState(exercise?.reps ?? '')
-  const [rest, setRest] = useState(exercise?.rest ?? 60)
+  const [customTimer, setCustomTimer] = useState(exercise?.custom_timer ?? '')
 
   const [videoUrl, setVideoUrl] = useState(exercise?.videoUrl ?? '')
   const [notes, setNotes] = useState(exercise?.notes ?? '')
@@ -79,7 +79,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
       type,
       sets: showSetsFields ? Number(sets) || 0 : 0,
       reps: showSetsFields ? reps.trim() : '',
-      rest: Number(rest) || 0,
+      ...(Number(customTimer) > 0 ? { custom_timer: Number(customTimer) } : {}),
       weight: weight.trim(),
       config,
       videoUrl: videoUrl.trim(),
@@ -228,15 +228,16 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
                 </div>
               )}
 
-              {/* Rest between sets */}
+              {/* Custom timer */}
               <div style={styles.field}>
-                <label style={styles.label}>Descanso entre series (seg)</label>
+                <label style={styles.label}>Timer personalizado (seg, opcional)</label>
                 <input
                   type="number"
                   min="0"
                   max="600"
-                  value={rest}
-                  onChange={(e) => setRest(e.target.value)}
+                  value={customTimer}
+                  onChange={(e) => setCustomTimer(e.target.value)}
+                  placeholder="Ej: 60"
                   style={styles.input}
                 />
               </div>
