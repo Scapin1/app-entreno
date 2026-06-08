@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { colors, typography, borderRadius } from '../../styles/tokens'
 import ExerciseList from './ExerciseList'
 
-const PhaseCard = ({ phase, onChange, onDelete, isOnly }) => {
+const PhaseCard = ({ phase, restMode, onChange, onDelete, isOnly }) => {
   const [collapsed, setCollapsed] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState(phase.name)
@@ -10,6 +10,7 @@ const PhaseCard = ({ phase, onChange, onDelete, isOnly }) => {
 
   const isCircuit = phase.type === 'circuit'
   const cfg = phase.config || {}
+  const resolvedRestMode = phase.restMode ?? 'per-phase'
 
   const handleNameSubmit = () => {
     if (nameDraft.trim()) {
@@ -133,8 +134,37 @@ const PhaseCard = ({ phase, onChange, onDelete, isOnly }) => {
       {/* Content */}
       {!collapsed && (
         <div style={styles.content}>
-          {/* Rest config — shown for all phases */}
+          {/* Rest config */}
           <div style={styles.configSection}>
+            {/* Rest mode toggle — only for non-circuit phases */}
+            {!isCircuit && (
+              <div style={styles.restModeRow}>
+                <span style={styles.configLabel}>Descansos</span>
+                <div style={styles.restModeToggle}>
+                  <button
+                    type="button"
+                    onClick={() => onChange({ ...phase, restMode: 'per-phase', config: cfg })}
+                    style={{
+                      ...styles.restModeBtn,
+                      ...(resolvedRestMode !== 'per-exercise' ? styles.restModeBtnActive : {}),
+                    }}
+                  >
+                    Por fase
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChange({ ...phase, restMode: 'per-exercise', config: cfg })}
+                    style={{
+                      ...styles.restModeBtn,
+                      ...(resolvedRestMode === 'per-exercise' ? styles.restModeBtnActive : {}),
+                    }}
+                  >
+                    Por ejercicio
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div style={styles.configGrid}>
               {/* Circuit-specific fields */}
               {isCircuit && (
@@ -150,28 +180,45 @@ const PhaseCard = ({ phase, onChange, onDelete, isOnly }) => {
                   />
                 </div>
               )}
-              <div style={styles.configField}>
-                <label style={styles.configLabel}>Descanso entre series (seg)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="300"
-                  value={cfg.micro_pause ?? 60}
-                  onChange={(e) => handleConfigChange('micro_pause', e.target.value)}
-                  style={styles.configInput}
-                />
-              </div>
-              <div style={styles.configField}>
-                <label style={styles.configLabel}>Descanso entre ejercicios (seg)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="600"
-                  value={cfg.macro_pause ?? 120}
-                  onChange={(e) => handleConfigChange('macro_pause', e.target.value)}
-                  style={styles.configInput}
-                />
-              </div>
+
+              {/* Rest inputs — hidden for per-exercise mode on non-circuit phases */}
+              {(!isCircuit && resolvedRestMode !== 'per-exercise') || isCircuit ? (
+                <>
+                  <div style={styles.configField}>
+                    <label style={styles.configLabel}>Descanso entre series (seg)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="300"
+                      value={cfg.micro_pause ?? 60}
+                      onChange={(e) => handleConfigChange('micro_pause', e.target.value)}
+                      style={styles.configInput}
+                    />
+                  </div>
+                  <div style={styles.configField}>
+                    <label style={styles.configLabel}>Descanso entre ejercicios (seg)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="600"
+                      value={cfg.macro_pause ?? 120}
+                      onChange={(e) => handleConfigChange('macro_pause', e.target.value)}
+                      style={styles.configInput}
+                    />
+                  </div>
+                </>
+              ) : null}
+
+              {/* Per-exercise mode info */}
+              {!isCircuit && resolvedRestMode === 'per-exercise' && (
+                <div style={styles.configField}>
+                  <label style={styles.configLabel}>Descansos</label>
+                  <div style={styles.perExerciseInfo}>
+                    Se configuran en cada ejercicio
+                  </div>
+                </div>
+              )}
+
               {isCircuit && (
                 <div style={styles.configField}>
                   <label style={styles.configLabel}>Rondas</label>
@@ -193,6 +240,7 @@ const PhaseCard = ({ phase, onChange, onDelete, isOnly }) => {
             exercises={phase.exercises || []}
             onChange={handleExercisesChange}
             phaseType={isCircuit ? 'circuit' : 'normal'}
+            restMode={resolvedRestMode}
           />
         </div>
       )}
@@ -368,6 +416,42 @@ const styles = {
     fontSize: '0.8rem',
     outline: 'none',
     boxSizing: 'border-box',
+  },
+  restModeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '0.65rem',
+    paddingBottom: '0.65rem',
+    borderBottom: `1px solid ${colors.surfaceContainerHighest}`,
+  },
+  restModeToggle: {
+    display: 'flex',
+    gap: '2px',
+    backgroundColor: colors.surfaceContainerHigh,
+    borderRadius: borderRadius.md,
+    padding: '2px',
+  },
+  restModeBtn: {
+    border: 'none',
+    borderRadius: borderRadius.sm,
+    backgroundColor: 'transparent',
+    color: colors.onSurfaceVariant,
+    padding: '0.3rem 0.55rem',
+    fontSize: '0.68rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+  },
+  restModeBtnActive: {
+    backgroundColor: colors.primary,
+    color: colors.onPrimaryFixed,
+  },
+  perExerciseInfo: {
+    fontSize: '0.72rem',
+    color: colors.onSurfaceVariant,
+    fontStyle: 'italic',
+    padding: '0.35rem 0',
   },
 }
 

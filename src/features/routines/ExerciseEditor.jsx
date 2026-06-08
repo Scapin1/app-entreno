@@ -10,7 +10,7 @@ const EXERCISE_TYPES = [
   { value: 'stretching', label: 'Elongación', showSets: false },
 ]
 
-const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) => {
+const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal', restMode }) => {
   const isNew = !exercise
   const isCircuit = phaseType === 'circuit'
   const [error, setError] = useState('')
@@ -28,11 +28,12 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
   const [reps, setReps] = useState(exercise?.reps ?? '')
   const [customTimer, setCustomTimer] = useState(exercise?.custom_timer ?? '')
 
-  const [videoUrl, setVideoUrl] = useState(exercise?.videoUrl ?? '')
   const [notes, setNotes] = useState(exercise?.notes ?? '')
-  const [configText, setConfigText] = useState(
-    exercise?.config ? JSON.stringify(exercise.config, null, 2) : '{}'
-  )
+
+  // Per-exercise rest fields
+  const showRestFields = !isCircuit && restMode === 'per-exercise'
+  const [restBetweenSets, setRestBetweenSets] = useState(exercise?.rest_between_sets ?? '')
+  const [restAfterExercise, setRestAfterExercise] = useState(exercise?.rest_after_exercise ?? '')
 
   const currentType = EXERCISE_TYPES.find((t) => t.value === type)
   const showSetsFields = currentType?.showSets ?? true
@@ -56,15 +57,6 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
     }
 
     // Normal mode
-    let config = {}
-    try {
-      config = JSON.parse(configText)
-      if (typeof config !== 'object' || config === null) throw new Error()
-    } catch {
-      setError('Config debe ser un JSON válido (ej: {"sets": 4, "reps": 10})')
-      return
-    }
-
     const exerciseData = {
       name: name.trim(),
       type,
@@ -72,8 +64,8 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
       reps: showSetsFields ? reps.trim() : '',
       ...(Number(customTimer) > 0 ? { custom_timer: Number(customTimer) } : {}),
       weight: weight.trim(),
-      config,
-      videoUrl: videoUrl.trim(),
+      ...(showRestFields && Number(restBetweenSets) > 0 ? { rest_between_sets: Number(restBetweenSets) } : {}),
+      ...(showRestFields && Number(restAfterExercise) > 0 ? { rest_after_exercise: Number(restAfterExercise) } : {}),
       notes: notes.trim(),
     }
 
@@ -220,29 +212,35 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, phaseType = 'normal' }) =>
               </div>
             </div>
 
-            {/* Config JSON */}
-            <div style={styles.field}>
-              <label style={styles.label}>Config (JSON, opcional)</label>
-              <textarea
-                value={configText}
-                onChange={(e) => setConfigText(e.target.value)}
-                style={styles.textarea}
-                rows={3}
-                placeholder={`{\n  "intensity": "media",\n  "rpe": 7,\n  "notes": "opcional"\n}`}
-              />
-            </div>
-
-            {/* Video URL */}
-            <div style={styles.field}>
-              <label style={styles.label}>URL de video (opcional)</label>
-              <input
-                type="text"
-                value={videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
-                placeholder="https://..."
-                style={styles.input}
-              />
-            </div>
+            {/* Per-exercise rest fields */}
+            {showRestFields && (
+              <div style={styles.restFieldsGrid}>
+                <div style={styles.field}>
+                  <label style={styles.label}>Descanso entre series (seg)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="300"
+                    value={restBetweenSets}
+                    onChange={(e) => setRestBetweenSets(e.target.value)}
+                    placeholder="Ej: 60"
+                    style={styles.input}
+                  />
+                </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>Descanso tras el ejercicio (seg)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="600"
+                    value={restAfterExercise}
+                    onChange={(e) => setRestAfterExercise(e.target.value)}
+                    placeholder="Ej: 120"
+                    style={styles.input}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Notes */}
             <div style={styles.field}>
@@ -333,6 +331,12 @@ const styles = {
     justifyContent: 'center',
   },
   formGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '0.75rem',
+    marginBottom: '0.75rem',
+  },
+  restFieldsGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '0.75rem',

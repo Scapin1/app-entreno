@@ -74,7 +74,7 @@ const Analytics = ({ onBack, onNavigate }) => {
       const startDate = getRangeStartDate(range)
       const endDate = getRangeEndDate()
 
-      const [summaryRes, statsRes, freqRes, weightRes, adherenceRes, sessionsRes] = await Promise.all([
+      const results = await Promise.allSettled([
         analyticsAPI.getSummary(profile.id),
         analyticsAPI.getStats(profile.id, startDate, endDate),
         analyticsAPI.getFrequency(profile.id, 8),
@@ -83,16 +83,36 @@ const Analytics = ({ onBack, onNavigate }) => {
         sessionsAPI.list(profile.id, 8, 0),
       ])
 
-      setSummary(summaryRes)
-      setStatsData(statsRes)
-      setFrequency(Array.isArray(freqRes) ? freqRes : [])
-      const suggestedExercise = Array.isArray(freqRes) && freqRes.length > 0 ? freqRes[0].exercise : ''
-      setSelectedExercise((prev) => prev || suggestedExercise)
-      setWeightHistory(Array.isArray(weightRes) ? weightRes : [])
-      setAdherence(adherenceRes || { days: [], max_count: 0 })
-      setSessions(Array.isArray(sessionsRes) ? sessionsRes : [])
-    } catch (e) {
-      setError('No pudimos cargar analytics del backend')
+      const [
+        summaryRes,
+        statsRes,
+        freqRes,
+        weightRes,
+        adherenceRes,
+        sessionsRes,
+      ] = results.map((r) => (r.status === 'fulfilled' ? r.value : undefined))
+
+      results.forEach((r) => {
+        if (r.status === 'rejected') {
+          console.warn('[Analytics]', r.reason)
+        }
+      })
+
+      const allRejected = results.every((r) => r.status === 'rejected')
+      if (allRejected) {
+        setError('No pudimos cargar analytics del backend')
+      }
+
+      if (summaryRes !== undefined) setSummary(summaryRes)
+      if (statsRes !== undefined) setStatsData(statsRes)
+      if (freqRes !== undefined) {
+        setFrequency(Array.isArray(freqRes) ? freqRes : [])
+        const suggestedExercise = Array.isArray(freqRes) && freqRes.length > 0 ? freqRes[0].exercise : ''
+        setSelectedExercise((prev) => prev || suggestedExercise)
+      }
+      if (weightRes !== undefined) setWeightHistory(Array.isArray(weightRes) ? weightRes : [])
+      if (adherenceRes !== undefined) setAdherence(adherenceRes || { days: [], max_count: 0 })
+      if (sessionsRes !== undefined) setSessions(Array.isArray(sessionsRes) ? sessionsRes : [])
     } finally {
       setLoading(false)
     }

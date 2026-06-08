@@ -14,6 +14,13 @@ class SessionUpdate(BaseModel):
     total_duration: Optional[int] = None
     is_completed: Optional[int] = None
 
+    @field_validator('is_completed', mode='before')
+    @classmethod
+    def coerce_bool_to_int(cls, v):
+        if isinstance(v, bool):
+            return int(v)
+        return v
+
 
 class SessionResponse(BaseModel):
     id: int

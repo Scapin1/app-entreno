@@ -97,9 +97,9 @@ const DayEditor = ({ day, onBack, onNavigate }) => {
               reps: ex.reps ? String(ex.reps) : '',
               ...(typeof ex.custom_timer === 'number' ? { custom_timer: ex.custom_timer } : {}),
               weight: ex.weight || '',
-              config: ex.config || {},
-              videoUrl: ex.videoUrl || '',
               notes: ex.notes || '',
+              ...(typeof ex.rest_between_sets === 'number' ? { rest_between_sets: ex.rest_between_sets } : {}),
+              ...(typeof ex.rest_after_exercise === 'number' ? { rest_after_exercise: ex.rest_after_exercise } : {}),
             }
           }),
         }

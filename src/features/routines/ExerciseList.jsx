@@ -11,7 +11,7 @@ const TYPE_LABELS = {
   stretching: 'Elongación',
 }
 
-const ExerciseList = ({ exercises, onChange, phaseType = 'normal' }) => {
+const ExerciseList = ({ exercises, onChange, phaseType = 'normal', restMode }) => {
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingIndex, setEditingIndex] = useState(null)
   const [deleteConfirmIndex, setDeleteConfirmIndex] = useState(null)
@@ -169,6 +169,7 @@ const ExerciseList = ({ exercises, onChange, phaseType = 'normal' }) => {
           onSave={handleSaveExercise}
           onCancel={handleCloseEditor}
           phaseType={phaseType}
+          restMode={restMode}
         />
       )}
     </div>
