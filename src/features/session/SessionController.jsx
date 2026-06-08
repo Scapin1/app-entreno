@@ -127,6 +127,17 @@ const SessionController = ({ day, onBack }) => {
     }
   }, [])
 
+  const DISPLAY_TYPE_MAP = {
+    strength: 'sets',
+    hypertrophy: 'sets',
+    warmup: 'sets',
+    timer: 'timer',
+    cardio: 'timer',
+    stretching: 'manual',
+  }
+
+  const getDisplayType = (type) => DISPLAY_TYPE_MAP[type] || type
+
   const getDurationSecondsFromText = (text) => {
     if (typeof text !== 'string') return 0
     const match = text.match(/(\d+)\s*(s|sec|secs|seg|segs|segundo|segundos|min|mins|minuto|minutos)\b/i)
@@ -175,15 +186,16 @@ const SessionController = ({ day, onBack }) => {
 
   const getDefaultRepsForExercise = (exercise) => {
     if (!exercise) return null
-    if (typeof exercise.reps === 'number') return exercise.reps
-    if (exercise.type === 'sets' && typeof exercise.value === 'string') {
+    const repsNum = exercise.reps != null ? Number(exercise.reps) : null
+    if (repsNum != null && !Number.isNaN(repsNum)) return repsNum
+    if (getDisplayType(exercise.type) === 'sets' && typeof exercise.value === 'string') {
       const repsText = getHybridRepsObjectiveText(exercise)
       const numbers = repsText.match(/\d+/g)
       if (!numbers?.length) return null
       return numbers.reduce((sum, value) => sum + Number(value), 0)
     }
-    if (exercise.type === 'reps' && typeof exercise.value === 'number') return exercise.value
-    if (exercise.type === 'timer' && typeof exercise.value === 'number') return exercise.value
+    if (getDisplayType(exercise.type) === 'reps' && typeof exercise.value === 'number') return exercise.value
+    if (getDisplayType(exercise.type) === 'timer' && typeof exercise.value === 'number') return exercise.value
     return null
   }
 
@@ -759,14 +771,14 @@ const SessionController = ({ day, onBack }) => {
 
   const getExerciseConfigLabel = () => {
     if (!currentExercise) return ''
-    if (currentExercise.type === 'timer' || currentExercise.custom_timer > 0) {
+    if (getDisplayType(currentExercise.type) === 'timer' || currentExercise.custom_timer > 0) {
       const target = Number(currentExercise.value || currentExercise.custom_timer || currentBlock?.config?.work || 0)
       return `Objetivo: ${formatTime(target).mins}:${formatTime(target).secs}`
     }
-    if (currentExercise.type === 'reps') {
+    if (getDisplayType(currentExercise.type) === 'reps') {
       return `Objetivo: ${currentExercise.value || '-'} reps`
     }
-    if (currentExercise.type === 'sets') {
+    if (getDisplayType(currentExercise.type) === 'sets') {
       if (hasManualSubTimer) {
         return `Objetivo: ${hybridRepsObjective} · ${secondaryTimerText}`
       }
@@ -776,16 +788,16 @@ const SessionController = ({ day, onBack }) => {
   }
 
   const getPrimaryActionLabel = () => {
-    const _hasTimer = currentExercise?.type === 'timer' || currentExercise?.custom_timer > 0
-    if (currentBlock?.type === 'circuit' && currentExercise?.type === 'timer') {
+    const _hasTimer = getDisplayType(currentExercise?.type) === 'timer' || currentExercise?.custom_timer > 0
+    if (currentBlock?.type === 'circuit' && getDisplayType(currentExercise?.type) === 'timer') {
       return 'Automático'
     }
     if (_hasTimer) {
       return isIntervalRunning ? 'Complete Interval' : 'Start Interval'
     }
     if (hasManualSubTimer) return 'Completar reps'
-    if (currentExercise?.type === 'reps') return 'Complete Reps'
-    if (currentExercise?.type === 'manual') return 'Complete Exercise'
+    if (getDisplayType(currentExercise?.type) === 'reps') return 'Complete Reps'
+    if (getDisplayType(currentExercise?.type) === 'manual') return 'Complete Exercise'
     return 'Complete Set'
   }
 
