@@ -95,6 +95,23 @@ const TrainingPreview = ({ day, routineId, onStart, onBack, onNavigate }) => {
     return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`
   }
 
+  const DISPLAY_TYPE_MAP = {
+    strength: 'sets',
+    hypertrophy: 'sets',
+    warmup: 'sets',
+    timer: 'timer',
+    cardio: 'timer',
+    stretching: 'manual',
+  }
+
+  const getDisplayType = (type) => DISPLAY_TYPE_MAP[type] || type
+
+  const parseReps = (reps) => {
+    if (reps == null) return null
+    const num = Number(reps)
+    return !Number.isNaN(num) ? num : null
+  }
+
   const getExerciseDisplay = (block, ex) => {
     let weight = '-'
     let repsVal = '-'
@@ -104,22 +121,23 @@ const TrainingPreview = ({ day, routineId, onStart, onBack, onNavigate }) => {
       setsVal = String(ex.sets)
     } else if (block.type === 'circuit' && typeof block.config?.total_sets === 'number') {
       setsVal = String(block.config.total_sets)
-    } else if (ex.type !== 'manual') {
+    } else if (getDisplayType(ex.type) !== 'manual') {
       setsVal = '1'
     }
 
-    if (ex.type === 'sets') {
-      if (typeof ex.reps === 'number') {
-        repsVal = `${ex.reps} reps`
+    if (getDisplayType(ex.type) === 'sets') {
+      const repsNum = parseReps(ex.reps)
+      if (repsNum != null && repsNum > 0) {
+        repsVal = `${repsNum} reps`
         weight = ex.weight != null ? `${ex.weight} kg` : '-'
       } else if (typeof ex.value === 'string') {
         repsVal = ex.value
       }
-    } else if (ex.type === 'reps') {
+    } else if (getDisplayType(ex.type) === 'reps') {
       repsVal = `${ex.value || 0} reps`
-    } else if (ex.type === 'timer') {
+    } else if (getDisplayType(ex.type) === 'timer') {
       repsVal = formatDuration(ex.value || 0)
-    } else if (ex.type === 'manual') {
+    } else if (getDisplayType(ex.type) === 'manual') {
       repsVal = 'manual'
     }
 

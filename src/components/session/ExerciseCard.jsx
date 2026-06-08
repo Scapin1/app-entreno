@@ -15,6 +15,17 @@ export const ExerciseCard = ({
     return null
   }
 
+  const DISPLAY_TYPE_MAP = {
+    strength: 'sets',
+    hypertrophy: 'sets',
+    warmup: 'sets',
+    timer: 'timer',
+    cardio: 'timer',
+    stretching: 'manual',
+  }
+
+  const getDisplayType = (type) => DISPLAY_TYPE_MAP[type] || type
+
   return (
   <div style={{
     backgroundColor: colors.surfaceContainerHigh,
@@ -47,11 +58,11 @@ export const ExerciseCard = ({
             color: colors.onSurfaceVariant,
             marginTop: '0.5rem',
           }}>
-            {exercise.type === 'timer'
+            {getDisplayType(exercise.type) === 'timer'
               ? `Interval ${setNumber} of ${totalSets} · ${Math.floor((exercise.value || 0) / 60)}:${((exercise.value || 0) % 60).toString().padStart(2, '0')} work`
-              : exercise.type === 'reps'
+              : getDisplayType(exercise.type) === 'reps'
                 ? `Set ${setNumber} of ${totalSets} · Target: ${exercise.value || '-'} reps`
-                : exercise.type === 'manual'
+                : getDisplayType(exercise.type) === 'manual'
                   ? `Set ${setNumber} of ${totalSets} · Guided movement`
                   : `Set ${setNumber} of ${totalSets} · Target: ${exercise.reps || 8}-${exercise.reps ? exercise.reps + 2 : 10} reps`}
           </p>
