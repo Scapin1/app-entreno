@@ -269,7 +269,12 @@ const TrainingPreview = ({ day, routineId, onStart, onBack, onNavigate }) => {
 
                       return (
                         <div key={eIdx} style={styles.setRow}>
-                          <div style={styles.setName}>{ex.name}</div>
+                          <div style={styles.setName}>
+                            {ex.name}
+                            {ex.notes ? (
+                              <div style={styles.exerciseNote}>{ex.notes}</div>
+                            ) : null}
+                          </div>
                           <div style={styles.setSets}>{display.setsVal}</div>
                           <div style={styles.setReps}>{display.repsVal}</div>
                           <div style={styles.setValue}>
@@ -398,7 +403,12 @@ const TrainingPreview = ({ day, routineId, onStart, onBack, onNavigate }) => {
                       <div key={eIdx} style={styles.setRowMobile}>
                         <div style={styles.exerciseNameMobile}>
                           <span style={{ color: colors.primary, marginRight: '8px' }}>{(eIdx + 1).toString().padStart(2, '0')}</span>
-                          {ex.name}
+                          <div>
+                            <div>{ex.name}</div>
+                            {ex.notes ? (
+                              <div style={styles.exerciseNoteMobile}>{ex.notes}</div>
+                            ) : null}
+                          </div>
                         </div>
                         <div style={styles.exerciseDetailMobile}>{detail}</div>
                       </div>
@@ -508,6 +518,19 @@ const styles = {
   setValue: { fontSize: '1rem', fontWeight: 700, fontFamily: typography.fontFamily.heading, color: colors.primary, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px' },
   setReps: { textAlign: 'center', fontSize: '1.5rem', fontWeight: 700, fontFamily: typography.fontFamily.heading, color: colors.onSurface, minWidth: '80px', display: 'flex', justifyContent: 'center' },
   setUnit: { fontSize: '0.875rem', color: colors.onSurfaceVariant, fontWeight: 400 },
+  exerciseNote: {
+    fontSize: '0.75rem',
+    color: colors.onSurfaceVariant,
+    marginTop: '2px',
+    fontStyle: 'italic',
+    fontWeight: 400,
+  },
+  exerciseNoteMobile: {
+    fontSize: '0.72rem',
+    color: colors.onSurfaceVariant,
+    marginTop: '2px',
+    fontStyle: 'italic',
+  },
   ghostSpacer: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', border: `1px dashed ${colors.surfaceContainerHighest}`, borderRadius: borderRadius.lg, color: colors.onSurfaceVariant },
 
   // Mobile

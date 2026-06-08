@@ -567,9 +567,11 @@ const SessionController = ({ day, onBack }) => {
         ? Number(currentBlock?.config?.macro_pause || 120)
         : Number(currentBlock?.config?.micro_pause || 30)
     } else {
+      const exerciseRestBetween = currentExercise?.rest_between_sets
+      const exerciseRestAfter = currentExercise?.rest_after_exercise
       restDuration = isLastSet
-        ? Number(currentBlock?.config?.macro_pause || 120)
-        : Number(currentBlock?.config?.micro_pause || 60)
+        ? (exerciseRestAfter ?? Number(currentBlock?.config?.macro_pause || 120))
+        : (exerciseRestBetween ?? Number(currentBlock?.config?.micro_pause || 60))
     }
 
     if (isCircuitBlock) {
@@ -982,6 +984,11 @@ const SessionController = ({ day, onBack }) => {
           />
         </ExerciseCard>
 
+        {/* Exercise notes */}
+        {currentExercise?.notes && (
+          <div style={styles.exerciseNotesDesktop}>{currentExercise.notes}</div>
+        )}
+
         {/* Up Next - solo 1 */}
         <UpNextSection exercises={upNextExercises} />
 
@@ -1030,6 +1037,11 @@ const SessionController = ({ day, onBack }) => {
             <p style={styles.mobileExerciseMeta}>
               Ronda {currentSetIndex + 1} of {currentExerciseSetCount}
             </p>
+          )}
+
+          {/* Exercise notes - mobile */}
+          {currentExercise?.notes && (
+            <p style={styles.exerciseNotesMobile}>{currentExercise.notes}</p>
           )}
 
           {/* Timer countdown for exercises with timer (mobile) */}
@@ -1293,6 +1305,26 @@ const styles = {
     fontWeight: 700,
     color: colors.onSurfaceVariant,
     fontFamily: typography.fontFamily.heading,
+  },
+  exerciseNotesDesktop: {
+    fontSize: '0.8rem',
+    color: colors.onSurfaceVariant,
+    fontStyle: 'italic',
+    marginTop: '0.5rem',
+    marginBottom: '0.5rem',
+    padding: '0.5rem 0.75rem',
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: borderRadius.md,
+    border: `1px solid ${colors.surfaceContainerHighest}`,
+    lineHeight: 1.4,
+  },
+  exerciseNotesMobile: {
+    fontSize: '0.78rem',
+    color: colors.onSurfaceVariant,
+    fontStyle: 'italic',
+    marginTop: '0.35rem',
+    marginBottom: '0.5rem',
+    lineHeight: 1.4,
   },
   targetChip: {
     backgroundColor: colors.surfaceContainerLow,

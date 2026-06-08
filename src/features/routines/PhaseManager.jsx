@@ -26,6 +26,7 @@ const PhaseManager = ({ blocks, onChange }) => {
           <PhaseCard
             key={idx}
             phase={phase}
+            restMode={phase.restMode}
             onChange={(updated) => handlePhaseChange(idx, updated)}
             onDelete={() => onChange(blocks.filter((_, i) => i !== idx))}
             isOnly={blocks.length <= 1}
