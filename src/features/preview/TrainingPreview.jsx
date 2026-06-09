@@ -162,7 +162,7 @@ const TrainingPreview = ({ day, routineId, onStart, onBack, onNavigate }) => {
           <div style={styles.headerSection}>
             <div style={styles.dayBadge}>
               <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>calendar_today</span>
-              <span>Day {day.id} · Phase 1</span>
+              <span>Day {day.day_number ?? day.id} · Phase 1</span>
               {routineName && <span style={styles.routineBadge}>{routineName}</span>}
             </div>
             <h1 style={styles.dayTitle}>
@@ -333,7 +333,7 @@ const TrainingPreview = ({ day, routineId, onStart, onBack, onNavigate }) => {
         <div style={styles.headerSection}>
           <div style={styles.dayBadge}>
             <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>calendar_today</span>
-            <span>Day {day.id}</span>
+            <span>Day {day.day_number ?? day.id}</span>
             {routineName && <span style={styles.routineBadgeMobile}>{routineName}</span>}
           </div>
           <h1 style={styles.mobileDayTitle}>
