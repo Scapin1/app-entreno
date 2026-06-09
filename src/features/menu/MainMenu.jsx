@@ -91,7 +91,7 @@ const MainMenu = ({ onSelectDay, onNavigate }) => {
               return (
                 <button key={day.id} onClick={() => onSelectDay?.(day)} style={{...styles.desktopCard, ...(index === 0 ? styles.todayCard : {})}}>
                   <div style={styles.cardHeader}>
-                    <span style={styles.dayNumber}>DAY {day.id.toString().padStart(2, '0')}</span>
+                    <span style={styles.dayNumber}>DAY {(day.day_number ?? day.id).toString().padStart(2, '0')}</span>
                     {index === 0 && <span style={styles.todayBadge}>HOY</span>}
                   </div>
                   <h3 style={styles.cardTitle}>{day.title}</h3>
@@ -164,7 +164,7 @@ const MainMenu = ({ onSelectDay, onNavigate }) => {
                 {index === 0 && <div style={styles.todayAccent} />}
                 <div style={styles.mobileCardContent}>
                   <div style={styles.mobileCardLeft}>
-                    <span style={styles.mobileDayNumber}>0{day.id}</span>
+                    <span style={styles.mobileDayNumber}>{(day.day_number ?? day.id).toString().padStart(2, '0')}</span>
                     {index === 0 && <span style={styles.mobileTodayBadge}>HOY</span>}
                   </div>
                   <div style={styles.mobileCardInfo}>
