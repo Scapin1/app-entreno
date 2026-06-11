@@ -370,6 +370,9 @@ const SessionController = ({ day, onBack }) => {
       if (currentSession.pendingLog) {
         setPendingLog(currentSession.pendingLog)
       }
+      if (currentSession.backendSessionId) {
+        setBackendSessionId(currentSession.backendSessionId)
+      }
     }
   }, [currentSessionKey, day, profile])
 
