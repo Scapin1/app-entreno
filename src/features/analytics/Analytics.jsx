@@ -258,10 +258,16 @@ const Analytics = ({ onBack, onNavigate }) => {
   )
 
 
+  const parseLocalDate = (str) => {
+    if (!str) return null
+    const [y, m, d] = str.split('-').map(Number)
+    return new Date(y, m - 1, d)
+  }
+
   const heatmapColumns = useMemo(() => {
     const dayMap = new Map((adherence?.days || []).map((d) => [d.date, d.count]))
-    const end = new Date(adherence?.end_date || getRangeEndDate())
-    const start = new Date(adherence?.start_date || getRangeStartDate(timeRange))
+    const end = parseLocalDate(adherence?.end_date) || parseLocalDate(getRangeEndDate())
+    const start = parseLocalDate(adherence?.start_date) || parseLocalDate(getRangeStartDate(timeRange))
     const startAligned = new Date(start)
     const weekday = (startAligned.getDay() + 6) % 7
     startAligned.setDate(startAligned.getDate() - weekday)
