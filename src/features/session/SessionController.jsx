@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { colors, borderRadius, typography } from '../../styles/tokens'
 import { useBreakpoint } from '../../hooks/useBreakpoint'
-import { saveWorkoutSession, saveExerciseResult, saveCurrentSession, clearCurrentSession, getCurrentSession } from '../../utils/storage'
+import { saveWorkoutSession, saveExerciseResult, saveCurrentSession, clearCurrentSession, getCurrentSession, savePendingFeeling, clearPendingFeeling } from '../../utils/storage'
 import { sessionsAPI } from '../../utils/api'
 import {
   TimerDisplay,
@@ -367,6 +367,9 @@ const SessionController = ({ day, onBack }) => {
       setCurrentSetIndex(currentSession.currentSetIndex || 0)
       setWeight(currentSession.weight || '')
       setReps(currentSession.reps || '')
+      if (currentSession.pendingLog) {
+        setPendingLog(currentSession.pendingLog)
+      }
     }
   }, [currentSessionKey, day, profile])
 
@@ -384,9 +387,10 @@ const SessionController = ({ day, onBack }) => {
       weight,
       reps,
       backendSessionId,
+      pendingLog,
       updatedAt: Date.now(),
     })
-  }, [currentSessionKey, day, profile, currentBlockIndex, currentExerciseIndex, currentSetIndex, elapsedTime, weight, reps, backendSessionId, sessionComplete])
+  }, [currentSessionKey, day, profile, currentBlockIndex, currentExerciseIndex, currentSetIndex, elapsedTime, weight, reps, backendSessionId, pendingLog, sessionComplete])
 
   useEffect(() => {
     let cancelled = false
@@ -442,6 +446,7 @@ const SessionController = ({ day, onBack }) => {
         feeling: pendingLog.defaultFeeling || 'ok',
         resistanceCompleted: pendingLog.defaultResistanceCompleted,
       })
+      clearPendingFeeling()
       setPendingLog(null)
     }
 
@@ -629,6 +634,7 @@ const SessionController = ({ day, onBack }) => {
         setNumber: currentSetIndex + 1,
         duration: exerciseElapsedTime,
         profileId: profile?.id,
+        backendSessionId,
       },
       showWeight: showWeightInput,
       defaultWeight: showWeightInput ? currentExercise?.weight ?? null : null,
@@ -640,6 +646,22 @@ const SessionController = ({ day, onBack }) => {
 
     if (restDuration > 0) {
       setPendingLog(pending)
+      savePendingFeeling({
+        feeling: pending.defaultFeeling,
+        actualWeight: pending.defaultWeight,
+        actualReps: pending.defaultReps,
+        resistanceCompleted: pending.defaultResistanceCompleted,
+        dayId: pending.base.dayId,
+        exerciseName: pending.base.exerciseName,
+        setNumber: pending.base.setNumber,
+        duration: pending.base.duration,
+        profileId: pending.base.profileId,
+        backendSessionId: pending.base.backendSessionId,
+        showResistance: pending.showResistance,
+        showWeight: pending.showWeight,
+        payload_exercise_name: pending.payload.exercise_name,
+        payload_set_number: pending.payload.set_number,
+      })
     } else {
       persistSetLog(pending, {
         actualWeight: pending.defaultWeight,
@@ -647,6 +669,7 @@ const SessionController = ({ day, onBack }) => {
         feeling: 'ok',
         resistanceCompleted: pending.defaultResistanceCompleted,
       })
+      clearPendingFeeling()
       setPendingLog(null)
     }
 
@@ -662,6 +685,7 @@ const SessionController = ({ day, onBack }) => {
 
     persistSetLog(pendingLog, log)
 
+    clearPendingFeeling()
     setPendingLog(null)
   }
 
@@ -733,6 +757,7 @@ const SessionController = ({ day, onBack }) => {
         feeling: pendingLog.defaultFeeling || 'ok',
         resistanceCompleted: pendingLog.defaultResistanceCompleted,
       })
+      clearPendingFeeling()
       setPendingLog(null)
     }
 

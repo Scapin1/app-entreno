@@ -3,6 +3,7 @@ const STORAGE_KEYS = {
   BODY_WEIGHT: 'entreno_body_weight',
   CURRENT_SESSION: 'entreno_current_session',
   UI_SETTINGS: 'entreno_ui_settings',
+  PENDING_LOG: 'entreno_pending_log',
 }
 
 const DEFAULT_HISTORY = []
@@ -234,6 +235,75 @@ export const saveUISettings = (partialSettings) => {
   } catch (e) {
     console.error('Error saving UI settings:', e)
     return getUISettings()
+  }
+}
+
+// ==================== PENDING LOG (FEELING QUIZ PERSISTENCE) ====================
+
+export const savePendingFeeling = (data) => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.PENDING_LOG, JSON.stringify({
+      ...data,
+      timestamp: Date.now(),
+    }))
+  } catch (e) {
+    console.error('Error saving pending feeling:', e)
+  }
+}
+
+export const clearPendingFeeling = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.PENDING_LOG)
+  } catch (e) {
+    console.error('Error clearing pending feeling:', e)
+  }
+}
+
+export const autoPersistPendingLog = () => {
+  const raw = localStorage.getItem(STORAGE_KEYS.PENDING_LOG)
+  if (!raw) return false
+  try {
+    const pl = JSON.parse(raw)
+    const note = pl.showResistance
+      ? (pl.resistanceCompleted ? 'resistencia_ok' : 'resistencia_no')
+      : null
+
+    // Synchronous localStorage save
+    saveExerciseResult(
+      pl.dayId,
+      pl.exerciseName,
+      pl.setNumber,
+      {
+        weight: pl.actualWeight,
+        reps: pl.actualReps,
+        resistanceCompleted: pl.resistanceCompleted,
+        note,
+      },
+      pl.feeling || 'ok',
+      pl.duration,
+    )
+
+    // Fire-and-forget backend call
+    if (pl.profileId && pl.backendSessionId) {
+      import('./api').then(({ sessionsAPI }) => {
+        sessionsAPI.addExerciseResult(pl.profileId, pl.backendSessionId, {
+          exercise_name: pl.payload_exercise_name,
+          set_number: pl.payload_set_number,
+          actual_weight: pl.actualWeight != null ? String(pl.actualWeight) : null,
+          actual_reps: pl.actualReps != null ? Number(pl.actualReps) : null,
+          feeling: pl.feeling || 'ok',
+          duration: pl.duration,
+          note,
+        }).catch(() => {})
+      })
+    }
+
+    clearPendingFeeling()
+    return true
+  } catch (e) {
+    console.error('Error auto-persisting pending log:', e)
+    clearPendingFeeling()
+    return false
   }
 }
 
