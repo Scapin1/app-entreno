@@ -112,15 +112,16 @@ const Analytics = ({ onBack, onNavigate }) => {
       }
       if (weightRes !== undefined) setWeightHistory(Array.isArray(weightRes) ? weightRes : [])
       if (adherenceRes !== undefined) {
+        const cacheKey = `entreno_adherence_cache_${range}`
         let resolved = adherenceRes
         // Write cache on successful fetch with data
         if (resolved?.days?.length > 0) {
-          localStorage.setItem('entreno_adherence_cache', JSON.stringify(resolved))
+          localStorage.setItem(cacheKey, JSON.stringify(resolved))
         }
         // Fallback: read cache on empty response
         if (!resolved?.days?.length) {
           try {
-            const cached = localStorage.getItem('entreno_adherence_cache')
+            const cached = localStorage.getItem(cacheKey)
             if (cached) {
               const parsed = JSON.parse(cached)
               if (parsed?.days?.length > 0) {
@@ -137,9 +138,9 @@ const Analytics = ({ onBack, onNavigate }) => {
     }
   }
 
-  // Clear adherence cache when profile changes
+  // Clear adherence caches when profile changes
   useEffect(() => {
-    localStorage.removeItem('entreno_adherence_cache')
+    ;['3m', '6m', '12m'].forEach((r) => localStorage.removeItem(`entreno_adherence_cache_${r}`))
   }, [profile?.id])
 
   useEffect(() => {
