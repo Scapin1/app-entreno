@@ -454,7 +454,6 @@ def get_adherence_heatmap(
         func.count(WorkoutSession.id).label("count")
     ).filter(
         WorkoutSession.profile_id == profile_id,
-        WorkoutSession.is_completed == 1,
         WorkoutSession.date >= start_str,
         WorkoutSession.date <= end_str,
     ).group_by(
