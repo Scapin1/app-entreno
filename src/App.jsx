@@ -89,15 +89,17 @@ function AppContent() {
       autoPersistPendingLog()
     }
 
-    window.addEventListener('beforeunload', handleLifecycleFlush)
-    document.addEventListener('visibilitychange', () => {
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') handleLifecycleFlush()
-    })
+    }
+
+    window.addEventListener('beforeunload', handleLifecycleFlush)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('pagehide', handleLifecycleFlush)
 
     return () => {
       window.removeEventListener('beforeunload', handleLifecycleFlush)
-      document.removeEventListener('visibilitychange', handleLifecycleFlush)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('pagehide', handleLifecycleFlush)
     }
   }, [screen])
