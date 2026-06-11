@@ -34,6 +34,7 @@ const Analytics = ({ onBack, onNavigate }) => {
 
   const feelingScoreMap = {
     easy: 4,
+    ok: 3,
     good: 3,
     hard: 2,
     failed: 1,
