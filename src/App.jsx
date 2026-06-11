@@ -7,7 +7,7 @@ import MainMenu from './features/menu/MainMenu'
 import TrainingPreview from './features/preview/TrainingPreview'
 import SessionController from './features/session/SessionController'
 import { sessionsAPI } from './utils/api'
-import { getCurrentSession } from './utils/storage'
+import { getCurrentSession, autoPersistPendingLog } from './utils/storage'
 import Analytics from './features/analytics/Analytics'
 import Settings from './features/settings/Settings'
 import RoutineManager from './features/routines/RoutineManager'
@@ -81,6 +81,28 @@ function AppContent() {
     }
     setScreen(screen)
   }
+
+  // Lifecycle hooks: persist pending feeling data before page closes/backgrounds
+  useEffect(() => {
+    const handleLifecycleFlush = () => {
+      if (screen !== 'session') return
+      autoPersistPendingLog()
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') handleLifecycleFlush()
+    }
+
+    window.addEventListener('beforeunload', handleLifecycleFlush)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('pagehide', handleLifecycleFlush)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleLifecycleFlush)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('pagehide', handleLifecycleFlush)
+    }
+  }, [screen])
 
   // Loading spinner
   if (loading && isAuthenticated && !profile) {

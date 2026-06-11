@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { colors, borderRadius, typography } from '../../styles/tokens'
+import { savePendingFeeling } from '../../utils/storage'
 
 // Rest Timer Overlay
 export const RestOverlay = ({ restTime, maxTime, nextExercise, onSkip, logConfig, onSubmitLog }) => {
@@ -22,7 +23,28 @@ export const RestOverlay = ({ restTime, maxTime, nextExercise, onSkip, logConfig
     setFeeling(logConfig.defaultFeeling || 'ok')
     setResistanceCompleted(Boolean(logConfig.defaultResistanceCompleted))
   }, [logConfig])
-  
+
+  // Sync feeling state to localStorage so it survives lifecycle events
+  useEffect(() => {
+    if (!logConfig) return
+    savePendingFeeling({
+      feeling,
+      actualWeight: actualWeight === '' ? null : Number(actualWeight),
+      actualReps: actualReps === '' ? null : Number(actualReps),
+      resistanceCompleted,
+      dayId: logConfig.base.dayId,
+      exerciseName: logConfig.base.exerciseName,
+      setNumber: logConfig.base.setNumber,
+      duration: logConfig.base.duration,
+      profileId: logConfig.base.profileId,
+      showResistance: logConfig.showResistance,
+      showWeight: logConfig.showWeight,
+      payload_exercise_name: logConfig.payload?.exercise_name,
+      payload_set_number: logConfig.payload?.set_number,
+      backendSessionId: logConfig.base.backendSessionId,
+    })
+  }, [feeling, actualWeight, actualReps, resistanceCompleted, logConfig])
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60

@@ -111,12 +111,36 @@ const Analytics = ({ onBack, onNavigate }) => {
         setSelectedExercise((prev) => prev || suggestedExercise)
       }
       if (weightRes !== undefined) setWeightHistory(Array.isArray(weightRes) ? weightRes : [])
-      if (adherenceRes !== undefined) setAdherence(adherenceRes || { days: [], max_count: 0 })
+      if (adherenceRes !== undefined) {
+        let resolved = adherenceRes
+        // Write cache on successful fetch with data
+        if (resolved?.days?.length > 0) {
+          localStorage.setItem('entreno_adherence_cache', JSON.stringify(resolved))
+        }
+        // Fallback: read cache on empty response
+        if (!resolved?.days?.length) {
+          try {
+            const cached = localStorage.getItem('entreno_adherence_cache')
+            if (cached) {
+              const parsed = JSON.parse(cached)
+              if (parsed?.days?.length > 0) {
+                resolved = parsed
+              }
+            }
+          } catch (_) { /* ignore corrupt cache */ }
+        }
+        setAdherence(resolved || { days: [], max_count: 0 })
+      }
       if (sessionsRes !== undefined) setSessions(Array.isArray(sessionsRes) ? sessionsRes : [])
     } finally {
       setLoading(false)
     }
   }
+
+  // Clear adherence cache when profile changes
+  useEffect(() => {
+    localStorage.removeItem('entreno_adherence_cache')
+  }, [profile?.id])
 
   useEffect(() => {
     if (!profile?.id) return
