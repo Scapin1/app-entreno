@@ -768,6 +768,24 @@ const SessionController = ({ day, onBack }) => {
     setRestTime(0)
   }
 
+  // Retry any pending session completions on mount
+  useEffect(() => {
+    if (!profile?.id) return
+    try {
+      const pending = JSON.parse(localStorage.getItem('entreno_pending_completion'))
+      if (pending?.profileId && pending?.sessionId && !pending?.completed) {
+        sessionsAPI.complete(pending.profileId, pending.sessionId, {
+          total_duration: pending.totalDuration,
+          is_completed: true,
+        }).then(() => {
+          localStorage.removeItem('entreno_pending_completion')
+        }).catch(() => {
+          // Will retry on next mount
+        })
+      }
+    } catch (_) { /* ignore corrupt data */ }
+  }, [profile?.id])
+
   const finishWorkout = () => {
     clearCurrentSession()
     saveWorkoutSession({
@@ -779,7 +797,16 @@ const SessionController = ({ day, onBack }) => {
 
     if (profile?.id && backendSessionId) {
       sessionsAPI.complete(profile.id, backendSessionId, { total_duration: elapsedTime, is_completed: true }).catch(err => {
-        console.warn('[Session]', err.message)
+        console.warn('[Session] complete failed, will retry:', err.message)
+        // Save pending completion for retry on next app load
+        try {
+          localStorage.setItem('entreno_pending_completion', JSON.stringify({
+            profileId: profile.id,
+            sessionId: backendSessionId,
+            totalDuration: elapsedTime,
+            completed: false,
+          }))
+        } catch (_) { /* ignore storage errors */ }
       })
     }
     setSubTimerRemaining(0)
